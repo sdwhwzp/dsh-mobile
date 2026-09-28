@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2D2CD7827F99F2D94E92AC89 /* MobileAccountLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 458B774AAC47375BD79C727F /* MobileAccountLoginView.swift */; };
 		3459A8BD9696202CAC9D85A5 /* GatewaySwitcherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B6B2953247E15BDA40F0BB /* GatewaySwitcherView.swift */; };
 		375D401B1B6F03015EC9073D /* GatewayProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = E638ED93D0BBFD018966FB52 /* GatewayProfile.swift */; };
 		39FD319C875F4B4A6893D676 /* GatewayProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B53A008218F24CA9A4DB4D1 /* GatewayProtocolTests.swift */; };
@@ -38,6 +39,7 @@
 		AFAE90EEB4462AD84169D356 /* GatewayModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 954FCEA4A6E71F3D1A22BB53 /* GatewayModels.swift */; };
 		B0C0FFEE0000000000000001 /* HarnessAnimatedBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C0FFEE0000000000000002 /* HarnessAnimatedBackground.swift */; };
 		B0C0FFEE0000000000000003 /* HarnessBackground.metal in Sources */ = {isa = PBXBuildFile; fileRef = B0C0FFEE0000000000000004 /* HarnessBackground.metal */; };
+		B2150702B0F916D93CEB82CB /* MobileAccountClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF9D2FA5D87BAB13221AC096 /* MobileAccountClientTests.swift */; };
 		C075849EE750C3CCD2C87FC7 /* MultiGatewayStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5FF365A80AA28B4D4CF2347 /* MultiGatewayStore.swift */; };
 		C5F737EBF5077A9BF35E9F64 /* TrajectoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65009160A0642089906B54DF /* TrajectoryView.swift */; };
 		C7A710000000000000000001 /* ChatLayout in Frameworks */ = {isa = PBXBuildFile; productRef = C7A710000000000000000003 /* ChatLayout */; };
@@ -47,6 +49,7 @@
 		CA11E000000000000000000B /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CA11E000000000000000000C /* Localizable.xcstrings */; };
 		CA11E000000000000000000D /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CA11E000000000000000000E /* InfoPlist.xcstrings */; };
 		CA11E000000000000000000F /* LocalizationCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA11E0000000000000000011 /* LocalizationCatalogTests.swift */; };
+		D1BA3A5E9086926D0CA13E61 /* MobileAccountClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEDCD018B5BC077F7AC6CDCE /* MobileAccountClient.swift */; };
 		D3A40BFC0B9C8D4B1C8FAA95 /* DeepSeekHarnessMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430CA64DF207C7EF58574336 /* DeepSeekHarnessMobileApp.swift */; };
 		E20191A4C7B1C0A8FF57CAC1 /* Glass.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCF581253EBCFEB43865AB51 /* Glass.swift */; };
 		E73A2DB9D678DA4B8C01E349 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4CE3D78565179C422C796509 /* MarkdownUI */; };
@@ -99,6 +102,7 @@
 		152A3874C0D169644C9C7B6D /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		38457CD5C46830D1CA7E6D73 /* DshMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DshMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		430CA64DF207C7EF58574336 /* DeepSeekHarnessMobileApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DeepSeekHarnessMobileApp.swift; sourceTree = "<group>"; };
+		458B774AAC47375BD79C727F /* MobileAccountLoginView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileAccountLoginView.swift; sourceTree = "<group>"; };
 		59B069578BB7F31AD35F601A /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5A37B43613D712F252BA91D7 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		61A1F439244BA594BF547C92 /* AppStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
@@ -132,6 +136,7 @@
 		CA11E0000000000000000011 /* LocalizationCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalizationCatalogTests.swift; sourceTree = "<group>"; };
 		D610757C1FF81FD953A9D000 /* WorkspaceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
 		D98111628697EC1C4FF9878B /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		DEDCD018B5BC077F7AC6CDCE /* MobileAccountClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileAccountClient.swift; sourceTree = "<group>"; };
 		E5FF365A80AA28B4D4CF2347 /* MultiGatewayStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultiGatewayStore.swift; sourceTree = "<group>"; };
 		E61E231D0CD3E07857F861B0 /* GatewayClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GatewayClient.swift; sourceTree = "<group>"; };
 		E638ED93D0BBFD018966FB52 /* GatewayProfile.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GatewayProfile.swift; sourceTree = "<group>"; };
@@ -146,6 +151,7 @@
 		F1A000000000000000000017 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FCF581253EBCFEB43865AB51 /* Glass.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Glass.swift; sourceTree = "<group>"; };
 		FEABDA4B6DAF199B320B1BA1 /* MultiGatewayTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MultiGatewayTests.swift; sourceTree = "<group>"; };
+		FF9D2FA5D87BAB13221AC096 /* MobileAccountClientTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MobileAccountClientTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +207,7 @@
 				12863E736F832D8F502B94A0 /* Theme.swift */,
 				E638ED93D0BBFD018966FB52 /* GatewayProfile.swift */,
 				E5FF365A80AA28B4D4CF2347 /* MultiGatewayStore.swift */,
+				DEDCD018B5BC077F7AC6CDCE /* MobileAccountClient.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -211,6 +218,7 @@
 				0B53A008218F24CA9A4DB4D1 /* GatewayProtocolTests.swift */,
 				CA11E0000000000000000011 /* LocalizationCatalogTests.swift */,
 				FEABDA4B6DAF199B320B1BA1 /* MultiGatewayTests.swift */,
+				FF9D2FA5D87BAB13221AC096 /* MobileAccountClientTests.swift */,
 			);
 			path = DeepSeekHarnessMobileTests;
 			sourceTree = "<group>";
@@ -297,6 +305,7 @@
 				65009160A0642089906B54DF /* TrajectoryView.swift */,
 				D610757C1FF81FD953A9D000 /* WorkspaceView.swift */,
 				65B6B2953247E15BDA40F0BB /* GatewaySwitcherView.swift */,
+				458B774AAC47375BD79C727F /* MobileAccountLoginView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -397,8 +406,6 @@
 			dependencies = (
 			);
 			name = AgentLiveActivityWidget;
-			packageProductDependencies = (
-			);
 			productName = AgentLiveActivityWidget;
 			productReference = F1A000000000000000000016 /* AgentLiveActivityWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -428,7 +435,7 @@
 			);
 			mainGroup = 40772A4CC858771C52FF6406;
 			packageReferences = (
-				A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "Vendor/swift-markdown-ui" */,
+				A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "swift-markdown-ui" */,
 				C7A710000000000000000004 /* XCRemoteSwiftPackageReference "ChatLayout" */,
 			);
 			productRefGroup = D7854C843240E809A949A26E /* Products */;
@@ -502,6 +509,7 @@
 				39FD319C875F4B4A6893D676 /* GatewayProtocolTests.swift in Sources */,
 				CA11E000000000000000000F /* LocalizationCatalogTests.swift in Sources */,
 				75392054CB69B9596796C57A /* MultiGatewayTests.swift in Sources */,
+				B2150702B0F916D93CEB82CB /* MobileAccountClientTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -546,6 +554,8 @@
 				375D401B1B6F03015EC9073D /* GatewayProfile.swift in Sources */,
 				C075849EE750C3CCD2C87FC7 /* MultiGatewayStore.swift in Sources */,
 				3459A8BD9696202CAC9D85A5 /* GatewaySwitcherView.swift in Sources */,
+				D1BA3A5E9086926D0CA13E61 /* MobileAccountClient.swift in Sources */,
+				2D2CD7827F99F2D94E92AC89 /* MobileAccountLoginView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -886,7 +896,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "Vendor/swift-markdown-ui" */ = {
+		A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "swift-markdown-ui" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "Vendor/swift-markdown-ui";
 		};
@@ -906,7 +916,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		4CE3D78565179C422C796509 /* MarkdownUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "Vendor/swift-markdown-ui" */;
+			package = A5BC89015C15661603FC0C4B /* XCLocalSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
 		};
 		C7A710000000000000000003 /* ChatLayout */ = {

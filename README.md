@@ -237,6 +237,8 @@ adb reverse tcp:3080 tcp:3080
 
 ## 连接与配对
 
+当前 Harness 的版本、Gateway 补丁、端口及账号隔离要求见[当前 Harness 接入](Docs/current-harness-integration.md)。
+
 1. 在 DeepSeek Harness 中安装并启用 `dsh-plugin-mobile-gateway`。
 2. 打开 WebUI 的“移动设备”面板，启用移动设备连接与设备鉴权。
 3. 确认 WebSocket 地址能被手机或模拟器访问。

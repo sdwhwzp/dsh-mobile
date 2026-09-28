@@ -6,6 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.clarklevis.dsh.android.platform.AndroidGatewayCredentialStore
+import com.clarklevis.dsh.android.platform.MobileAccountClient
+import com.clarklevis.dsh.android.platform.MobileAccountCredential
 import com.clarklevis.dsh.android.platform.AndroidGatewayPreferences
 import com.clarklevis.dsh.android.platform.AndroidNetworkMonitor
 import com.clarklevis.dsh.android.platform.OkHttpGatewayTransport
@@ -181,6 +183,30 @@ class AndroidMultiGatewayStore(private val application: Application) {
         }
     }
 
+    /** Login creates one independently cached gateway profile per server/account identity. */
+    suspend fun loginAccount(origin: String, username: String, password: String) {
+        val previous = profiles.firstNotNullOfOrNull { profile ->
+            credentials.loadToken("host:${profile.localId}")?.let(MobileAccountCredential::decode)?.takeIf {
+                it.origin == origin.trim().trimEnd('/') && it.gatewayName == username.trim()
+            }
+        }
+        val credential = MobileAccountClient.login(origin, username, password, previous)
+        GatewayIdentity.validate(null, credential.gatewayId)
+        GatewayIdentity.validateEndpoint(credential.endpoint)
+        switching.withLock {
+            val existing = profiles.firstOrNull { it.gatewayId == credential.gatewayId }
+            val profile = (existing ?: GatewayProfile(UUID.randomUUID().toString(), gatewayId = credential.gatewayId,
+                gatewayName = credential.gatewayName, endpoints = listOf(credential.endpoint), server = true))
+                .copy(endpoints = listOf(credential.endpoint), preferredEndpoint = credential.endpoint)
+            credentials.saveToken("host:${profile.localId}", credential.encode())
+            profiles = profiles.filterNot { it.localId == profile.localId } + profile
+            persist()
+            // Re-login must replace the old access token even when this profile is currently connected.
+            withContext(activeGraph.gatewayDispatcher) { activeGraph.gatewayRuntime.disconnect() }
+            activate(profile, connect = true)
+        }
+    }
+
     private suspend fun activate(profile: GatewayProfile, connect: Boolean, prepared: AndroidAppGraph? = null) {
         if (profiles.none { it.localId == profile.localId } && prepared == null) return
         if (prepared == null && activeId == profile.localId &&
@@ -340,7 +366,12 @@ class AndroidMultiGatewayStore(private val application: Application) {
                         check(preferences.edit().remove("active").commit())
                         GatewayConnectionService.stop(application)
                     }
-                    knownIds.forEach { credentials.deleteToken("host:$it") }
+                    knownIds.forEach { id ->
+                        credentials.loadToken("host:$id")?.let(MobileAccountCredential::decode)?.let {
+                            MobileAccountClient.logout(it)
+                        }
+                        credentials.deleteToken("host:$id")
+                    }
                     profiles = profiles.filterNot { it.localId in knownIds }
                     onlineIds = onlineIds - knownIds
                     persist()
@@ -408,6 +439,8 @@ class AndroidMultiGatewayStore(private val application: Application) {
         if (profile.localId == activeId && activeGraph.gatewayRuntime.state.value.connection == GatewayConnectionState.CONNECTED) return
         onlineIds = onlineIds - profile.localId
         val token = credentials.loadToken("host:${profile.localId}") ?: return
+        // Presence probes must never forward the persisted refresh cookie as a bearer token.
+        if (MobileAccountCredential.decode(token) != null) return
         for (endpoint in profile.connectionEndpoints) {
             currentCoroutineContext().ensureActive()
             val transport = OkHttpGatewayTransport()
@@ -489,7 +522,11 @@ private class ScopedCredentials(private val delegate: GatewayCredentialStore, id
 
     override suspend fun loadOrCreateDeviceId() = delegate.loadOrCreateDeviceId()
 
-    override suspend fun loadToken(endpoint: String) = delegate.loadToken(key)
+    override suspend fun loadToken(endpoint: String): String? {
+        val stored = delegate.loadToken(key) ?: return null
+        val account = MobileAccountCredential.decode(stored) ?: return stored
+        return MobileAccountClient.access(account, endpoint)
+    }
 
     override suspend fun saveToken(endpoint: String, token: String) = delegate.saveToken(key, token)
 

@@ -775,6 +775,12 @@ class AndroidSharedStateHolder(
             scheduledTasksError = "连接网关后可查看定时任务"
             return
         }
+        if ("schedule-management" !in gatewayState.capabilities) {
+            scheduledTasks = emptyList()
+            scheduledTasksLoading = false
+            scheduledTasksError = "当前 Harness 未启用定时任务插件"
+            return
+        }
         scheduledTasksLoading = true
         scheduledTasksError = null
         appGraph.gatewayScope.launch {

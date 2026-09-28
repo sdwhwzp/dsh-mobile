@@ -177,6 +177,30 @@ final class MultiGatewayStore: ObservableObject {
         store.gateway.connectForPairing(normalized)
     }
 
+    /// Each server/account pair owns a separate profile, preferences, history and attachment cache.
+    func loginAccount(origin: String, username: String, password: String) async throws {
+        let previous = try profiles.compactMap { profile -> MobileAccountCredential? in
+            let key = URL(string: "https://gateway-credential.invalid/\(profile.id)")!
+            guard let stored = GatewayTokenStore.load(for: key) else { return nil }
+            return try MobileAccountCredential.decode(stored)
+        }.first { $0.origin.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == origin.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "/")) && $0.gatewayName == username.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let credential = try await MobileAccountClient.login(origin: origin, username: username, password: password, previous: previous)
+        try Task.checkCancellation()
+        var profile = profiles.first { $0.gatewayId == credential.gatewayId } ?? GatewayProfile(
+            gatewayId: credential.gatewayId, gatewayName: credential.gatewayName,
+            endpoints: [credential.endpoint], deviceKind: "server.rack")
+        profile.endpoints = [credential.endpoint]
+        profile.preferredEndpoint = credential.endpoint
+        let key = URL(string: "https://gateway-credential.invalid/\(profile.id)")!
+        try GatewayTokenStore.save(credential.encoded(), for: key)
+        profiles.removeAll { $0.id == profile.id }
+        profiles.append(profile)
+        persist()
+        cancelPairing()
+        stopProbes()
+        activate(profile, connect: true)
+    }
+
     private func acceptIdentity(_ frame: GatewayFrame, store: AppStore) {
         let isPending = store === pairingStore
         guard isPending || store === activeStore else { return }
@@ -231,6 +255,23 @@ final class MultiGatewayStore: ObservableObject {
     }
 
     func remove(ids: Set<String>) {
+        do {
+            let accounts = try profiles.filter { ids.contains($0.id) }.compactMap { profile -> MobileAccountCredential? in
+                let key = URL(string: "https://gateway-credential.invalid/\(profile.id)")!
+                guard let stored = GatewayTokenStore.load(for: key) else { return nil }
+                return try MobileAccountCredential.decode(stored)
+            }
+            if accounts.isEmpty { removeLocal(ids: ids); return }
+            Task {
+                do {
+                    for account in accounts { try await MobileAccountClient.logout(account) }
+                    removeLocal(ids: ids)
+                } catch { self.error = error.localizedDescription }
+            }
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func removeLocal(ids: Set<String>) {
         let knownIDs = ids.intersection(Set(profiles.map(\.id)))
         guard !knownIDs.isEmpty else { return }
         cancelPairing()
@@ -268,6 +309,8 @@ final class MultiGatewayStore: ObservableObject {
     }
 
     private func probe(_ profile: GatewayProfile) async {
+        let key = URL(string: "https://gateway-credential.invalid/\(profile.id)")!
+        if GatewayTokenStore.load(for: key)?.hasPrefix(MobileAccountCredential.prefix) == true { return }
         let client = GatewayClient()
         client.credentialID = profile.id
         client.expectedGatewayID = profile.gatewayId

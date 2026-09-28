@@ -99,6 +99,8 @@ internal fun GatewayAuthenticationMenu(
     onManualEntry: () -> Unit
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var accountLogin by remember { mutableStateOf(false) }
+    if (accountLogin) MobileAccountLogin { accountLogin = false }
     Box {
         GlassCircleButton(
             iconRes = R.drawable.ic_gateway_auth,
@@ -116,6 +118,14 @@ internal fun GatewayAuthenticationMenu(
             shadowElevation = 12.dp,
             border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.62f))
         ) {
+            AuthenticationMenuItem(
+                title = "账号登录",
+                iconRes = R.drawable.ic_gateway_auth,
+                testTag = "gateway-auth-account"
+            ) {
+                expanded = false
+                accountLogin = true
+            }
             AuthenticationMenuItem(
                 title = "扫描二维码",
                 iconRes = R.drawable.ic_qr_viewfinder,

@@ -1,0 +1,64 @@
+diff --git a/README.md b/README.md
+index 5915c12..3f42c58 100644
+--- a/README.md
++++ b/README.md
+@@ -18,6 +18,8 @@ DeepSeek Harness 的设备鉴权移动网关，支持会话与实时事件、排
+
+ ## 协议与 DSH 兼容层
+
++本地 Harness 适配使用 `dsh-client-ui-renderer` 提供浏览器 Slot 服务。`hello.capabilities` 仅在 Host 已挂载 `schedule` 服务时包含 `schedule-management`；默认 Web profile 不启用定时任务，需要另行安装 `@deepseek-ai/dsh-experimental-schedule-bundle`。
++
+ 移动端连接的是本项目维护的 `dsh-mobile-v1`，不是 DSH 的内部 Remote 协议。插件内部通过独立 Host Adapter 对接 DSH 0.1.7-rc.2 的 Remote Gateway；Session、Workspace、Settings、Commands、Goals、Schedule、Permission Presets 等 namespace 和严格参数只存在于该适配层。
+
+ 配对鉴权和 `dsh-mobile-v1` / `hello.protocol = 3` 保持不变。新版实时 token 不占用持久事件的 `seq`：客户端显式订阅 `assistantStream: true`，接收原子的 `session-snapshot` 和独立增量；普通 `event` 只携带持久事件。未接入新订阅的客户端只能收到持久消息。
+diff --git a/lib/index.mjs b/lib/index.mjs
+index e045b32..06551b7 100644
+--- a/lib/index.mjs
++++ b/lib/index.mjs
+@@ -2990,7 +2990,7 @@ const plugin = {
+               'commands',
+               'tasks',
+               'goals',
+-              'schedule-management',
++              ...(ctx.get?.('schedule') ? ['schedule-management'] : []),
+               'session-cancel',
+               'queue-control',
+               'session-archive',
+diff --git a/package.json b/package.json
+index e4f6eab..9851c58 100644
+--- a/package.json
++++ b/package.json
+@@ -40,7 +40,7 @@
+     "client": {
+       "platform": "web",
+       "inject": [
+-        "@deepseek-ai/dsh-client-runtime",
++        "@deepseek-ai/dsh-client-ui-renderer",
+         "@deepseek-ai/dsh-client-ui-layout",
+         "@deepseek-ai/dsh-client-ui-sidebar"
+       ]
+diff --git a/test/auth.test.mjs b/test/auth.test.mjs
+index 3c5c834..e6b19b8 100644
+--- a/test/auth.test.mjs
++++ b/test/auth.test.mjs
+@@ -247,7 +247,6 @@ function expectRejected(url, options = {}) {
+     'commands',
+     'tasks',
+     'goals',
+-    'schedule-management',
+     'session-cancel',
+     'queue-control',
+     'session-archive',
+diff --git a/test/gateway.test.mjs b/test/gateway.test.mjs
+index 4204024..dce9f22 100644
+--- a/test/gateway.test.mjs
++++ b/test/gateway.test.mjs
+@@ -230,7 +230,7 @@ function fakeApi() {
+ }
+ const api = fakeApi()
+ const ctx = {
+-  get(name) { return name === 'webServer' ? webServer : undefined },
++  get(name) { return name === 'webServer' ? webServer : name === 'schedule' ? {} : undefined },
+   on(name, fn) { listeners[name] = fn; return () => {} },
+   effect(fn) { disposer = fn() },
+ }

@@ -18,6 +18,7 @@ struct WorkspaceView: View {
     @State private var showsDirectoryBrowser = false
     @State private var showsQRScanner = false
     @State private var showsManualPairing = false
+    @State private var showsAccountLogin = false
     @State private var drawerOffset: CGFloat = 0
     @State private var drawerDragStart: CGFloat?
     @FocusState private var sessionSearchIsFocused: Bool
@@ -125,6 +126,9 @@ struct WorkspaceView: View {
         .sheet(isPresented: $showsManualPairing) {
             ManualGatewayPairingSheet(gateway: hosts.pairingStore?.gateway ?? store.gateway)
                 .environmentObject(store)
+        }
+        .sheet(isPresented: $showsAccountLogin) {
+            MobileAccountLoginView().environmentObject(hosts)
         }
     }
 
@@ -290,7 +294,8 @@ struct WorkspaceView: View {
             onManualEntry: {
                 store.lastError = nil
                 showsManualPairing = true
-            }
+            },
+            onAccountLogin: { showsAccountLogin = true }
         )
     }
 
@@ -772,6 +777,7 @@ private struct GatewayAuthenticationMenu: View {
     @ObservedObject var gateway: GatewayClient
     let onScan: () -> Void
     let onManualEntry: () -> Void
+    let onAccountLogin: () -> Void
 
     var body: some View {
         if #available(iOS 26.0, *) {
@@ -788,6 +794,9 @@ private struct GatewayAuthenticationMenu: View {
 
     private var menu: some View {
         Menu {
+            Button(action: onAccountLogin) {
+                Label("账号登录", systemImage: "person.crop.circle.badge.checkmark")
+            }
             Button(action: onScan) {
                 Label("扫描二维码", systemImage: "qrcode.viewfinder")
             }

@@ -379,6 +379,7 @@ final class AppStore: ObservableObject {
     private var sessionAgentPresetTimeout: Task<Void, Never>?
     private var isPreparingNewConversation = false
     @Published private(set) var supportsTasks = false
+    @Published private(set) var supportsScheduleManagement = false
     @Published private(set) var supportsGoals = false
     @Published private(set) var supportsSessionCancel = false
     @Published private(set) var cancellingSessionIDs: Set<String> = []
@@ -1009,6 +1010,12 @@ final class AppStore: ObservableObject {
         guard gateway.state.isConnected else {
             scheduledTasksLoading = false
             scheduledTasksError = "连接网关后可查看定时任务"
+            return
+        }
+        guard supportsScheduleManagement else {
+            scheduledTasks = []
+            scheduledTasksLoading = false
+            scheduledTasksError = String(localized: "当前 Harness 未启用定时任务插件")
             return
         }
         scheduledTasksLoading = true
@@ -1687,7 +1694,7 @@ final class AppStore: ObservableObject {
             return
         }
         if frame.kind == "schedule-changed" {
-            if gateway.state.isConnected { gateway.requestScheduleCatalog() }
+            if gateway.state.isConnected { refreshScheduledTasks() }
             return
         }
         if frame.kind == "error" && frame.requestType == "schedule-catalog" {
@@ -1908,6 +1915,7 @@ final class AppStore: ObservableObject {
             supportsSessionCreation = payload.capabilities.contains("session-create")
             supportsSessionAgentPreset = payload.capabilities.contains("session-agent-preset")
             supportsTasks = payload.capabilities.contains("tasks")
+            supportsScheduleManagement = payload.capabilities.contains("schedule-management")
             supportsGoals = payload.capabilities.contains("goals")
             supportsSessionCancel = payload.capabilities.contains("session-cancel")
             supportsQueueControl = payload.capabilities.contains("queue-control")

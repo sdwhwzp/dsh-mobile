@@ -15,6 +15,7 @@ final class GatewayClient: ObservableObject {
     private var pendingConversationPayloads: [String] = []
     private var pendingConversationBytes = 0
     private var outboundTask: Task<Void, Never>?
+    private var accountAuthTask: Task<Void, Never>?
     private let transportSession = URLSession(configuration: .ephemeral, delegate: GatewayRedirectBlocker(), delegateQueue: nil)
 
     static func forgetCredential(for profileID: String) {
@@ -122,6 +123,7 @@ final class GatewayClient: ObservableObject {
     private var isRecoveringFromBackground = false
 
     deinit {
+        accountAuthTask?.cancel()
         outboundTask?.cancel()
         receiveTask?.cancel()
         reconnectTask?.cancel()
@@ -191,6 +193,25 @@ final class GatewayClient: ObservableObject {
         isManualPairingAttempt = pairingCode != nil
         if resetReportedFailure { lastReportedFailure = nil }
         state = .connecting
+        accountAuthTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                var token = GatewayTokenStore.load(for: credentialURL(url))
+                if let stored = token, let account = try MobileAccountCredential.decode(stored) {
+                    token = try await MobileAccountClient.access(account, endpoint: url.absoluteString)
+                }
+                try Task.checkCancellation()
+                openSocket(url, pairingCode: pairingCode, token: token)
+            } catch is CancellationError {
+                // A newer connection or an account switch owns the client now.
+            } catch {
+                guard !Task.isCancelled else { return }
+                fail(error.localizedDescription, shouldReconnect: false)
+            }
+        }
+    }
+
+    private func openSocket(_ url: URL, pairingCode: String?, token: String?) {
         var request = URLRequest(url: url)
         request.setValue(channel, forHTTPHeaderField: "X-DSH-Channel")
         do {
@@ -201,7 +222,7 @@ final class GatewayClient: ObservableObject {
         }
         if let pairingCode {
             request.setValue("dsh-mobile-v1, dsh-pair.\(pairingCode)", forHTTPHeaderField: "Sec-WebSocket-Protocol")
-        } else if let token = GatewayTokenStore.load(for: credentialURL(url)) {
+        } else if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue("dsh-mobile-v1", forHTTPHeaderField: "Sec-WebSocket-Protocol")
         } else {
@@ -219,6 +240,8 @@ final class GatewayClient: ObservableObject {
     }
 
     func disconnect(reconnect: Bool = false) {
+        accountAuthTask?.cancel()
+        accountAuthTask = nil
         outboundTask?.cancel()
         outboundTask = nil
         pendingConversationPayloads.removeAll()
@@ -933,7 +956,7 @@ private enum GatewayDeviceIdentityStore {
     }
 }
 
-private enum GatewayTokenStore {
+enum GatewayTokenStore {
     private static let service = "ai.dsh.mobile.ios.gateway-token"
 
     static func load(for endpoint: URL) -> String? {
@@ -994,7 +1017,7 @@ private enum GatewayTokenStore {
 }
 
 /// 拒绝 WebSocket 握手重定向，避免向其他来源转发主机凭据。
-private final class GatewayRedirectBlocker: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+final class GatewayRedirectBlocker: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest,

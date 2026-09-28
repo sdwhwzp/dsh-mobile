@@ -2886,6 +2886,16 @@
         }
       }
     },
+    "当前 Harness 未启用定时任务插件" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scheduled tasks are not enabled on this Harness host"
+          }
+        }
+      }
+    },
     "定时任务" : {
 
     },
@@ -4956,6 +4966,126 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Default model updated"
+          }
+        }
+      }
+    },
+    "账号登录" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account login"
+          }
+        }
+      }
+    },
+    "HTTPS 服务器地址" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTPS server address"
+          }
+        }
+      }
+    },
+    "用户名" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Username"
+          }
+        }
+      }
+    },
+    "密码" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Password"
+          }
+        }
+      }
+    },
+    "登录" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log in"
+          }
+        }
+      }
+    },
+    "登录现有 Harness 账号。登录后可在主机列表切换账号。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log in to an existing Harness account. Switch accounts in the host list."
+          }
+        }
+      }
+    },
+    "请输入 HTTPS 服务器地址，不要包含路径或凭据" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter an HTTPS server address without a path or credentials."
+          }
+        }
+      }
+    },
+    "服务器账号协议不兼容，请更新账号网关" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The account protocol is incompatible. Update the account gateway."
+          }
+        }
+      }
+    },
+    "账号与服务器地址不匹配" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This account does not match the server address."
+          }
+        }
+      }
+    },
+    "服务器或账号身份已变更，请重新登录" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server or account identity changed. Log in again."
+          }
+        }
+      }
+    },
+    "服务器未返回登录验证凭据" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The server did not return a login challenge cookie."
+          }
+        }
+      }
+    },
+    "账号请求失败（%lld），请检查账号或服务器配置" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account request failed (%lld). Check the account or server configuration."
           }
         }
       }
