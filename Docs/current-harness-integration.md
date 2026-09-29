@@ -45,3 +45,7 @@ node scripts/check-harness-mobile.mjs http://127.0.0.1:13880 /tmp/mobile-workspa
 本机验证已包括 Android APK 构建及单元测试、Kotlin 共享层测试、iOS Simulator 构建和 16 项账号/主机隔离/本地化测试、服务端 27 项认证与 Remote mux 测试，以及当前 Harness 上通过账号网关完成的原生协议联调（包括命令目录和 assistant-stream 订阅）。这些结果不代表真机签名安装或真实模型生成已经验收。
 
 本机 Gradle 缓存和 iOS DerivedData 已移到挂载的外置盘 `/Volumes/External/dsh-mobile-build-cache-20260928`，原来的 `.gradle-user` 与 `build/ios` 路径为本机符号链接。源码仍在 `/Users/wangzhipeng/dsh-mobile`；其他机器使用自己的缓存目录。
+
+## iOS 发布
+
+正式 iOS 归档与 TestFlight 上传步骤见 [TestFlight 发布](testflight.md)。
