@@ -349,8 +349,7 @@ class AndroidSharedStateHolder(
                                             } else event.frame
                                         ))
                                         if (messageReceipts.isNotEmpty() &&
-                                            (event.frame.kind in setOf("sent", "error", "history", "session-snapshot", "session-queue", "session-queues", "queue-item-updated") ||
-                                                event.frame.kind == "event" && event.frame.event?.type == "user/message")) {
+                                            event.frame.kind in setOf("sent", "error", "session-queue", "session-queues", "queue-item-updated")) {
                                             messageReceipts = messageReceiptStore.acceptFrame(event.rawJson)
                                         }
                                         handleSessionCancellationFrame(event.frame)
@@ -430,7 +429,12 @@ class AndroidSharedStateHolder(
                                         projectionActor.acceptFrame(
                                             event.rawJson,
                                             event.frame,
-                                            event.correlatedSessionId
+                                            event.correlatedSessionId,
+                                            afterTranscriptAccepted = {
+                                                if (messageReceipts.isNotEmpty()) {
+                                                    messageReceipts = messageReceiptStore.acceptFrame(event.rawJson)
+                                                }
+                                            }
                                         ) {
                                             pruneAttachmentStateForSession()
                                             handleWorkspaceFrame(event.frame)

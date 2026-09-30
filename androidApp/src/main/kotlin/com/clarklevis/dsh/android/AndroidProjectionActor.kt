@@ -38,11 +38,20 @@ internal class AndroidProjectionActor(
         rawJson: String,
         frame: GatewayFrame,
         correlatedSessionId: String?,
+        afterTranscriptAccepted: () -> Unit = {},
         afterPublish: () -> Unit = {}
-    ) = mutate(
-        afterPublish = afterPublish,
-        coalesceWithDisplayFrame = frame.kind == "assistant-stream" || (frame.kind == "event" && frame.event?.type == "assistant/chunk")
-    ) { projection.acceptFrame(rawJson, frame, correlatedSessionId) }
+    ) = mutationLock.withLock {
+        flushPendingStreamingFrameLocked()
+        var transcriptAccepted = false
+        val next = projection.acceptFrame(rawJson, frame, correlatedSessionId) { transcriptAccepted = true }
+        publishMutationLocked(
+            next,
+            coalesceWithDisplayFrame = frame.kind == "assistant-stream" || (frame.kind == "event" && frame.event?.type == "assistant/chunk")
+        ) {
+            if (transcriptAccepted) afterTranscriptAccepted()
+            afterPublish()
+        }
+    }
 
     /**
      * 将同一步骤的微小文本 token 合成一次增量投影。Runtime 仍无损处理每个协议帧；这里只

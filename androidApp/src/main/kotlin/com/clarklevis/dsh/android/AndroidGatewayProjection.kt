@@ -182,7 +182,13 @@ internal class AndroidGatewayProjection(
         )
     }
 
-    fun acceptFrame(rawJson: String, frame: GatewayFrame, correlatedSessionId: String?): SharedMobileSnapshot {
+    /** Transcript acknowledgements require an accepted subscription and a successful UI projection. */
+    fun acceptFrame(
+        rawJson: String,
+        frame: GatewayFrame,
+        correlatedSessionId: String?,
+        onTranscriptAccepted: () -> Unit = {}
+    ): SharedMobileSnapshot {
         lastFrameKind = frame.kind
         if (frame.kind == "session-queues" && frame.queues != null) {
             val queues = requireNotNull(frame.queues)
@@ -260,6 +266,10 @@ internal class AndroidGatewayProjection(
         if (id != null && update.attemptId != null && update.chunksJson != "[]") {
             conversationStore.assistantChunks(id, requireNotNull(update.attemptId), update.chunksJson)
         }
+        if (lastError == null && id != null &&
+            (frame.kind in setOf("history", "session-snapshot") ||
+                frame.kind == "event" && frame.event?.type == "user/message")
+        ) onTranscriptAccepted()
         return snapshot()
     }
 

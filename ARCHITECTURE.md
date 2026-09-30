@@ -78,7 +78,7 @@ SwiftUI View 仅读取 `AppStore` 状态并调用语义化 Intent 方法。Conve
 
 1. SwiftUI 调用 `AppStore.send` 产生用户 Intent。
 2. AppStore 让 KMP SessionList/History 状态机处理本地状态，并交由 `GatewayClient` 执行 WebSocket 发送。
-3. Gateway 返回 `sent` / `event` 帧；Router 将帧归一化为 KMP Intent。 `sent` 保留当前已建立或正在等待首个 snapshot 的会话订阅，不能重新打开同一历史流。
+3. Gateway 返回 `sent` / `event` 帧；Router 将帧归一化为 KMP Intent。 `sent` 保留当前已建立或正在等待首个 snapshot 的会话订阅，不能重新打开同一历史流。 本地待同步消息仅在匹配用户消息通过当前订阅或历史请求校验并成功写入历史后移除；迟到的旧订阅帧或已失效历史响应不能清除待同步文字。
 4. KMP Conversation/Trajectory/History/SessionList Store 从唯一业务状态生成有序增量 Event。
 5. Swift Adapter 先验证 schema、sequence、Intent 和 patch，再发布 UI change。
 6. Conversation 文本 delta 与 Trajectory operation 在下一次 MainActor FIFO/display-link 批次刷新 UI。

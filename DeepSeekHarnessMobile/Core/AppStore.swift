@@ -795,6 +795,12 @@ final class AppStore: ObservableObject {
     }
 
 #if DEBUG
+    /// Seed a local submission without opening a network connection; incoming frames use the production path.
+    func beginMessageReceiptForTesting(requestID: String, sessionID: String, text: String) {
+        messageReceipts = messageReceiptStore.begin(requestId: requestID, sessionId: sessionID,
+            text: text, attachmentCount: 0)
+    }
+
     /// XCTest 只等待生产使用的同一延迟交付队列，不提供同步发布旁路。
     func awaitPendingKMPEventDeliveriesForTesting() async {
         while isKMPEventDeliveryScheduled || !pendingKMPEventDeliveries.isEmpty {
@@ -1695,12 +1701,20 @@ final class AppStore: ObservableObject {
         gateway.subscribe(sessionId: sessionID)
     }
 
+    private func acceptMessageReceiptFrame(_ frame: GatewayFrame) {
+        guard !messageReceipts.isEmpty, let data = try? JSONEncoder().encode(frame) else { return }
+        messageReceipts = messageReceiptStore.acceptFrame(json: String(decoding: data, as: UTF8.self))
+    }
+
+    // Only history accepted by the current subscription/request can replace a local preview.
+    private func acceptMessageReceiptEvidence(_ record: SessionEvent) {
+        guard record.event.type == "user/message" else { return }
+        acceptMessageReceiptFrame(GatewayFrame(kind: "event", sessionId: record.sessionId, event: record.event))
+    }
+
     private func handle(_ frame: GatewayFrame) {
-        if !messageReceipts.isEmpty,
-           ["sent", "error", "history", "session-snapshot", "session-queue", "session-queues", "queue-item-updated"].contains(frame.kind) ||
-             (frame.kind == "event" && frame.event?.type == "user/message"),
-           let data = try? JSONEncoder().encode(frame) {
-            messageReceipts = messageReceiptStore.acceptFrame(json: String(decoding: data, as: UTF8.self))
+        if ["sent", "error", "session-queue", "session-queues", "queue-item-updated"].contains(frame.kind) {
+            acceptMessageReceiptFrame(frame)
         }
         if frame.kind == "sent", supportsMessageReceipts,
            frame.requestId != messageSubmissionRequestID { return }
@@ -1814,6 +1828,7 @@ final class AppStore: ObservableObject {
                             chunksJSON: assistantStreamState.replayChunksJson())
                         drainKMPEventDeliveries()
                     }
+                    if !messageReceipts.isEmpty { records.forEach(acceptMessageReceiptEvidence) }
                     GatewayPerformanceTrace.snapshotApplied(owner: gateway, sessionID: id, count: records.count)
                     return
                 }
@@ -2707,6 +2722,7 @@ final class AppStore: ObservableObject {
                     nextBeforeSequence: payload.nextBeforeSequence,
                     remoteActivityTimestamp: self.sessions.first(where: { $0.id == id })?.lastActivity.timeIntervalSince1970
                 )
+                if !self.messageReceipts.isEmpty { normalized.forEach(self.acceptMessageReceiptEvidence) }
             } catch {
                 let primaryError = error.localizedDescription
                 self.lastError = primaryError
@@ -2743,6 +2759,7 @@ final class AppStore: ObservableObject {
             lastError = error.localizedDescription
             return
         }
+        acceptMessageReceiptEvidence(record)
         applyEvent(record)
     }
 
