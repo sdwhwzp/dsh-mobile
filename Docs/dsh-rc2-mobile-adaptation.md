@@ -14,7 +14,7 @@
 4. 重复增量、重复持久事件及旧订阅/旧 stream 的迟到帧被丢弃。committed end 必须关联已经收到的持久事件；abandoned、reset、断连和切换清除临时输出。连续性异常重新订阅，永久 reset 显示错误。
 5. 历史缓存跟随每个 gateway 独立的状态容器，按 session 记录格式版本。未标注版本或版本变化的历史及分页状态清除后重新安装基线；分页在发起时捕获游标所属版本，不给旧坐标补写新版本。
 6. 晚到的 latest history 不覆盖活动快照；更早历史与持久事件合并后恢复临时前缀。iOS 的异步历史处理由原有处理 token 在新快照时失效。
-7. Android 的 hello、订阅确认、snapshot、独立增量、持久事件及 reset 共用有序的 conversation 队列，控制投影和文件响应继续走控制队列。
+7. Android 的 hello、订阅确认、snapshot、独立增量、持久事件及 reset 共用有序的 conversation 队列，控制投影和文件响应继续走控制队列。 已有会话的 `sent` 回执保留当前 subscriptionId、streamId 和生成前缀，包括首快照仍在传输的情况；只有回执使当前选择绑定到新会话时才重置流状态。
 8. todo/goal 的控制基线按整体替换处理，缺失 session/键和空对象会清除旧值。会话快照也安装对应投影。
 9. 保留 interrupted、attempt stream、usage，以及持久帧根节点的 surfaceOp/sourceEventSeqs；历史工具结果识别内层 `tool-result.isError`。中断消息和失败 attempt 显示中断状态。
 10. 对话采用独立增量 patch；轨迹页组合持久节点和临时节点，临时节点只引用真实生成起点，事件记录为空，不伪造 seq。

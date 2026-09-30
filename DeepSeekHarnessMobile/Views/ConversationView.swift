@@ -1678,7 +1678,13 @@ struct ConversationView: View {
                         }
                     }
                     .padding(12)
-                    .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16))
+                    .background {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(uiColor: .secondarySystemBackground))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 16).fill(Color.accentColor.opacity(0.10))
+                            }
+                    }
                     .accessibilityIdentifier("message-receipt-\(receipt.phase)")
                 }
             }

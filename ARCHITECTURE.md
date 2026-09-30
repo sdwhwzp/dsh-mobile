@@ -78,7 +78,7 @@ SwiftUI View 仅读取 `AppStore` 状态并调用语义化 Intent 方法。Conve
 
 1. SwiftUI 调用 `AppStore.send` 产生用户 Intent。
 2. AppStore 让 KMP SessionList/History 状态机处理本地状态，并交由 `GatewayClient` 执行 WebSocket 发送。
-3. Gateway 返回 `sent` / `event` 帧；Router 将帧归一化为 KMP Intent。
+3. Gateway 返回 `sent` / `event` 帧；Router 将帧归一化为 KMP Intent。 `sent` 保留当前已建立或正在等待首个 snapshot 的会话订阅，不能重新打开同一历史流。
 4. KMP Conversation/Trajectory/History/SessionList Store 从唯一业务状态生成有序增量 Event。
 5. Swift Adapter 先验证 schema、sequence、Intent 和 patch，再发布 UI change。
 6. Conversation 文本 delta 与 Trajectory operation 在下一次 MainActor FIFO/display-link 批次刷新 UI。
@@ -113,6 +113,10 @@ Question request 进入 `SharedQuestionStore`，UI answer/cancel 作为 Intent �
 - iOS XCTest：真实 KMP framework 桥接、坏 Event fail-closed、平台 effect、产品源码架构门禁。
 - iPhoneOS Release 无签名构建：Device Kotlin/Native framework 和 Swift 产品编译。
 - 真实 Gateway 人工回归：连接/重连、消息收发、History、Trajectory、Question、模型/权限和前后台。
+
+### 可选实机分段计时
+
+启动 App 时设置 `DSH_HISTORY_PERF=1` 可记录选中会话、订阅写入、快照收取/解码/应用和最新消息完成布局的耗时，以及消息提交、确认和匹配用户消息回传的耗时；正常启动默认关闭。输出格式为 `DSH_HISTORY_PERF sample=<递增整数> phase=<固定阶段> ms=<毫秒> count=<数量>`，不输出服务器、账号、会话或请求标识、正文和凭据。每次选择会话使用独立样本；`snapshot_received` 是 WebSocket receive 恢复执行时刻，`history_visible` 是 UIKit 最新消息在可见区域且底部布局稳定的时刻，不代表物理屏幕绘制完成。消息回传计时要求网关支持关联回执。
 
 ## 9. 当前边界
 

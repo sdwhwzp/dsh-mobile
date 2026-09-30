@@ -79,6 +79,58 @@ class AndroidRc2StreamTest {
         assertNull(projection.snapshot().taskSnapshot)
     }
 
+    @Test
+    fun sentInExistingSessionPreservesActiveReplyAndFollowingUserEcho() {
+        val projection = ready()
+        try {
+            projection.deliver(snapshot)
+            projection.deliver("""{"kind":"sent","sessionId":"s","requestId":"next-message"}""")
+            projection.deliver(delta)
+            assertEquals("Hello world", projection.snapshot().conversation.single().text)
+            projection.deliver(final)
+            projection.deliver(end)
+            projection.deliver("""{"kind":"event","sessionId":"s","subscriptionId":"sub","streamId":"stream","seq":43,"time":103,"event":{"type":"user/message","source":"user","text":"Next question","raw":{"rpcId":"next-message"}}}""")
+            assertEquals(listOf("Hello world", "Next question"), projection.snapshot().conversation.map { it.text })
+            assertNull(projection.snapshot().lastError)
+        } finally {
+            projection.close()
+        }
+    }
+
+    @Test
+    fun sentWhileExistingSessionSnapshotIsInFlightStillInstallsHistory() {
+        val projection = ready()
+        try {
+            projection.deliver("""{"kind":"sent","sessionId":"s","requestId":"next-message"}""")
+            projection.deliver(snapshot)
+            assertFalse(projection.snapshot().selectedHistoryIsLoading)
+            assertEquals("Hello", projection.snapshot().conversation.single().text)
+            projection.deliver(delta)
+            assertEquals("Hello world", projection.snapshot().conversation.single().text)
+            assertNull(projection.snapshot().lastError)
+        } finally {
+            projection.close()
+        }
+    }
+
+    @Test
+    fun sentForNewSessionBindsItsFollowingSubscriptionAndSnapshot() {
+        val projection = AndroidGatewayProjection()
+        try {
+            projection.deliver("""{"kind":"hello","historyFormatVersion":3,"capabilities":["assistant-stream-v1"]}""")
+            projection.selectSession(null)
+            projection.deliver("""{"kind":"sent","sessionId":"s","requestId":"first-message"}""")
+            assertEquals("s", projection.snapshot().selectedSessionId)
+            projection.deliver("""{"kind":"subscribed","sessionId":"s","subscriptionId":"sub","assistantStream":true}""")
+            projection.deliver(snapshot)
+            projection.deliver(delta)
+            assertEquals("Hello world", projection.snapshot().conversation.single().text)
+            assertNull(projection.snapshot().lastError)
+        } finally {
+            projection.close()
+        }
+    }
+
     private fun ready() = AndroidGatewayProjection().apply {
         selectSession("s")
         deliver("""{"kind":"hello","historyFormatVersion":3,"capabilities":["assistant-stream-v1"]}""")

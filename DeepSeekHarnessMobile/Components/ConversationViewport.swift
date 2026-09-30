@@ -1178,6 +1178,13 @@ final class ConversationViewportController: UIViewController, UICollectionViewDe
             }
             if nextStablePasses >= 2 || remainingPasses <= 0 {
                 self.onBottomAlignmentCompleted()
+                if let timeline = self.timeline, !self.collectionView.isHidden,
+                   let last = self.dataSource.snapshot().itemIdentifiers.last,
+                   let indexPath = self.dataSource.indexPath(for: last),
+                   self.collectionView.indexPathsForVisibleItems.contains(indexPath) {
+                    GatewayPerformanceTrace.visible(timeline: timeline,
+                        count: self.dataSource.snapshot().numberOfItems)
+                }
             } else {
                 self.confirmStableBottomAlignment(
                     generation: generation,

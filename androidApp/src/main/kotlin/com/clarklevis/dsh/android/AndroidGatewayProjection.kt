@@ -250,8 +250,11 @@ internal class AndroidGatewayProjection(
             "hello" -> if (usesAssistantStream) controlSnapshot.selectedSessionId?.let(::awaitSnapshot)
             "paired", "attachment" -> Unit
             else -> {
+                val previousSessionId = controlSnapshot.selectedSessionId
                 controlSnapshot = mobileStore.acceptFrame(rawJson)
-                if (frame.kind == "sent") assistantStream.selectSession(controlSnapshot.selectedSessionId)
+                if (frame.kind == "sent" && controlSnapshot.selectedSessionId != previousSessionId) {
+                    assistantStream.selectSession(controlSnapshot.selectedSessionId)
+                }
             }
         }
         if (id != null && update.attemptId != null && update.chunksJson != "[]") {

@@ -1931,6 +1931,41 @@ final class GatewayProtocolTests: XCTestCase {
     }
 
     @MainActor
+    func testSentDuringColdOpeningKeepsOriginalSubscriptionAndLiveUserEcho() async throws {
+        let (store, session) = try await makeRc2HistoryLoadingStore()
+        try await deliverHistoryLoadingFrame(store,
+            #"{"kind":"subscribed","sessionId":"mask-session","subscriptionId":"opening","assistantStream":true}"#)
+        try await deliverHistoryLoadingFrame(store,
+            #"{"kind":"sent","sessionId":"mask-session"}"#)
+        try await deliverHistoryLoadingFrame(store,
+            #"{"kind":"session-snapshot","sessionId":"mask-session","subscriptionId":"opening","streamId":"original","historyFormatVersion":3,"cursor":10,"events":[{"type":"assistant/message","seq":10,"time":100,"data":{"message":{"content":[{"type":"text","text":"已有回复"}]}}}],"hasMore":false}"#)
+        XCTAssertFalse(store.historyLoadingSessionIds.contains(session.id),
+            "A receipt must not restart an opening that is already waiting for its snapshot")
+        try await deliverHistoryLoadingFrame(store,
+            #"{"kind":"event","sessionId":"mask-session","subscriptionId":"opening","streamId":"original","seq":11,"time":101,"event":{"type":"user/message","text":"本次消息","source":"user"}}"#)
+        await store.awaitConversationProjectionForTesting(sessionID: session.id, expectedText: "本次消息")
+        XCTAssertEqual(store.renderedConversationItems[session.id]?.map(\.text), ["已有回复", "本次消息"])
+        XCTAssertNil(store.lastError)
+    }
+
+    @MainActor
+    func testSentAfterSnapshotKeepsExistingSubscriptionAndLiveUserEcho() async throws {
+        let (store, session) = try await makeRc2HistoryLoadingStore()
+        try await deliverHistoryLoadingFrame(store,
+            #"{"kind":"subscribed","sessionId":"mask-session","subscriptionId":"existing","assistantStream":true}"#)
+        try await deliverHistoryLoadingFrame(store,
+            #"{"kind":"session-snapshot","sessionId":"mask-session","subscriptionId":"existing","streamId":"original","historyFormatVersion":3,"cursor":0,"events":[],"hasMore":false}"#)
+        try await deliverHistoryLoadingFrame(store,
+            #"{"kind":"sent","sessionId":"mask-session"}"#)
+        try await deliverHistoryLoadingFrame(store,
+            #"{"kind":"event","sessionId":"mask-session","subscriptionId":"existing","streamId":"original","seq":1,"time":101,"event":{"type":"user/message","text":"即时回显","source":"user"}}"#)
+        await store.awaitConversationProjectionForTesting(sessionID: session.id, expectedText: "即时回显")
+        XCTAssertEqual(store.renderedConversationItems[session.id]?.last?.text, "即时回显")
+        XCTAssertFalse(store.historyLoadingSessionIds.contains(session.id))
+        XCTAssertNil(store.lastError)
+    }
+
+    @MainActor
     func testRc2EmptySnapshotEndsLoadingAndCachedRefreshKeepsRows() async throws {
         let (store, session) = try await makeRc2HistoryLoadingStore()
         try await deliverHistoryLoadingFrame(store,

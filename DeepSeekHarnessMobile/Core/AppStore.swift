@@ -1002,6 +1002,10 @@ final class AppStore: ObservableObject {
     }
 
     func prepareConversation(for session: SessionSummary) async -> Bool {
+        if GatewayPerformanceTrace.enabled {
+            GatewayPerformanceTrace.beginHistory(owner: gateway, sessionID: session.id,
+                timeline: conversationTimeline(for: session.id))
+        }
         leaveSessionAgentPreset()
         cancelSnapshotWait()
         if let previous = selectedSessionId { try? kmpConversationStore.clearAssistantChunks(sessionID: previous) }
@@ -1547,6 +1551,7 @@ final class AppStore: ObservableObject {
         waitingForNewSession = selectedSessionId == nil
         let receiptID = supportsMessageReceipts ? UUID().uuidString : nil
         messageSubmissionRequestID = receiptID
+        GatewayPerformanceTrace.beginMessage(owner: gateway, sessionID: selectedSessionId, requestID: receiptID)
         if let receiptID {
             messageReceipts = messageReceiptStore.begin(requestId: receiptID, sessionId: selectedSessionId,
                 text: trimmed, attachmentCount: Int32(images.count))
@@ -1809,6 +1814,7 @@ final class AppStore: ObservableObject {
                             chunksJSON: assistantStreamState.replayChunksJson())
                         drainKMPEventDeliveries()
                     }
+                    GatewayPerformanceTrace.snapshotApplied(owner: gateway, sessionID: id, count: records.count)
                     return
                 }
                 if let attemptID = update.attemptId, let id = update.sessionId, update.chunksJson != "[]" {
@@ -2652,7 +2658,11 @@ final class AppStore: ObservableObject {
                 ?? String(localized: "session.preview.id", defaultValue: "\(sessionID.prefix(12))…"),
             sessionId: sessionID
         )
-        if selectedSessionId == sessionID && !assistantStreamState.hasBaseline(sessionId: sessionID) {
+        // A sent receipt can arrive before the first snapshot. Preserve that
+        // in-flight subscription so its snapshot and following echo remain valid.
+        if selectedSessionId == sessionID,
+           pendingSnapshotSessionID != sessionID,
+           !assistantStreamState.hasBaseline(sessionId: sessionID) {
             subscribeToSession(sessionID)
         }
         if isNewSession { gateway.requestSessions() }

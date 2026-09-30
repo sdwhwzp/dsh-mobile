@@ -2,10 +2,167 @@ import Foundation
 import Security
 import OSLog
 
+/// Opt-in timings retain identifiers in memory and emit only fixed phases and aggregate numbers.
+@MainActor
+enum GatewayPerformanceTrace {
+    static let enabled = ProcessInfo.processInfo.environment["DSH_HISTORY_PERF"] == "1"
+
+    private enum Phase: String {
+        case historyBegin = "history_begin"
+        case subscribeWriteBegin = "subscribe_write_begin"
+        case subscribeWriteComplete = "subscribe_write_complete"
+        case snapshotReceived = "snapshot_received"
+        case snapshotDecoded = "snapshot_decoded"
+        case snapshotApplied = "snapshot_applied"
+        case historyVisible = "history_visible"
+        case cachedVisible = "cached_visible"
+        case messageBegin = "message_begin"
+        case messageWriteBegin = "message_write_begin"
+        case messageWriteComplete = "message_write_complete"
+        case sent
+        case userEcho = "user_echo"
+        case messageFailed = "message_failed"
+    }
+
+    private struct Sample {
+        let id: Int
+        let owner: ObjectIdentifier
+        let sessionID: String?
+        let started: TimeInterval
+    }
+    private struct HistorySample {
+        let sample: Sample
+        let timeline: ObjectIdentifier
+        var subscriptionID: String?
+        var applied = false
+        var visible = false
+        var cachedVisible = false
+    }
+    private struct MessageSample {
+        let sample: Sample
+        var accepted = false
+        var echoed = false
+    }
+    private static var nextID = 0
+    private static var history: HistorySample?
+    private static var messages: [String: MessageSample] = [:]
+
+    static var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
+
+    static func beginHistory(owner: GatewayClient, sessionID: String, timeline: ConversationTimeline) {
+        guard enabled else { return }
+        let sample = makeSample(owner: owner, sessionID: sessionID)
+        history = HistorySample(sample: sample, timeline: ObjectIdentifier(timeline))
+        emit(sample, .historyBegin)
+    }
+
+    static func subscribeWrite(owner: GatewayClient, sessionID: String?, complete: Bool) {
+        guard enabled, let sample = history?.sample,
+              sample.owner == ObjectIdentifier(owner), sample.sessionID == sessionID else { return }
+        emit(sample, complete ? .subscribeWriteComplete : .subscribeWriteBegin)
+    }
+
+    /// The receive timestamp is captured before JSON decoding; frame contents are never logged.
+    static func decoded(_ frame: GatewayFrame, owner: GatewayClient, receivedAt: TimeInterval?, bytes: Int) {
+        guard enabled, let receivedAt else { return }
+        if var current = history, current.sample.owner == ObjectIdentifier(owner),
+           current.sample.sessionID == frame.sessionId {
+            if frame.kind == "subscribed" {
+                current.subscriptionID = frame.subscriptionId
+                history = current
+            } else if frame.kind == "session-snapshot", frame.subscriptionId == current.subscriptionID {
+                emit(current.sample, .snapshotReceived, at: receivedAt, count: bytes)
+                emit(current.sample, .snapshotDecoded, count: frame.events?.count ?? 0)
+            }
+        }
+        if frame.kind == "sent", let id = frame.requestId,
+           var pending = matchingMessage(id, owner: owner, sessionID: frame.sessionId) {
+            if !pending.accepted { emit(pending.sample, .sent, at: receivedAt) }
+            pending.accepted = true
+            messages[id] = pending.echoed ? nil : pending
+        } else if frame.kind == "event", frame.event?.type == "user/message",
+                  let id = frame.event?.raw?["rpcId"]?.stringValue ?? frame.event?.raw?["source"]?["rpcId"]?.stringValue {
+            echo(id, owner: owner, sessionID: frame.sessionId, at: receivedAt)
+        } else if frame.kind == "session-snapshot" {
+            for event in frame.events ?? [] where event.type == "user/message" {
+                if let id = event.data["source"]?["rpcId"]?.stringValue {
+                    echo(id, owner: owner, sessionID: frame.sessionId, at: receivedAt)
+                }
+            }
+        } else if frame.kind == "error", let id = frame.requestId,
+                  let pending = matchingMessage(id, owner: owner, sessionID: frame.sessionId) {
+            emit(pending.sample, .messageFailed, at: receivedAt)
+            messages[id] = nil
+        }
+    }
+
+    static func snapshotApplied(owner: GatewayClient, sessionID: String, count: Int) {
+        guard enabled, var current = history, current.sample.owner == ObjectIdentifier(owner),
+              current.sample.sessionID == sessionID else { return }
+        current.applied = true
+        history = current
+        emit(current.sample, .snapshotApplied, count: count)
+    }
+
+    static func visible(timeline: ConversationTimeline, count: Int) {
+        guard enabled, var current = history, current.timeline == ObjectIdentifier(timeline) else { return }
+        if current.applied, !current.visible {
+            current.visible = true
+            emit(current.sample, .historyVisible, count: count)
+        } else if !current.applied, !current.cachedVisible {
+            current.cachedVisible = true
+            emit(current.sample, .cachedVisible, count: count)
+        }
+        history = current
+    }
+
+    static func beginMessage(owner: GatewayClient, sessionID: String?, requestID: String?) {
+        guard enabled, let requestID else { return }
+        if messages.count >= 32, let oldest = messages.min(by: { $0.value.sample.id < $1.value.sample.id })?.key {
+            messages[oldest] = nil
+        }
+        let sample = makeSample(owner: owner, sessionID: sessionID)
+        messages[requestID] = MessageSample(sample: sample)
+        emit(sample, .messageBegin)
+    }
+
+    static func messageWrite(owner: GatewayClient, requestID: String?, complete: Bool, bytes: Int) {
+        guard enabled, let requestID, let pending = messages[requestID],
+              pending.sample.owner == ObjectIdentifier(owner) else { return }
+        emit(pending.sample, complete ? .messageWriteComplete : .messageWriteBegin, count: bytes)
+    }
+
+    private static func matchingMessage(_ id: String, owner: GatewayClient, sessionID: String?) -> MessageSample? {
+        guard let pending = messages[id], pending.sample.owner == ObjectIdentifier(owner),
+              pending.sample.sessionID == nil || pending.sample.sessionID == sessionID else { return nil }
+        return pending
+    }
+
+    private static func echo(_ id: String, owner: GatewayClient, sessionID: String?, at: TimeInterval) {
+        guard var pending = matchingMessage(id, owner: owner, sessionID: sessionID) else { return }
+        if !pending.echoed { emit(pending.sample, .userEcho, at: at) }
+        pending.echoed = true
+        messages[id] = pending.accepted ? nil : pending
+    }
+
+    private static func makeSample(owner: GatewayClient, sessionID: String?) -> Sample {
+        nextID += 1
+        return Sample(id: nextID, owner: ObjectIdentifier(owner), sessionID: sessionID, started: now)
+    }
+
+    private static func emit(_ sample: Sample, _ phase: Phase, at timestamp: TimeInterval? = nil, count: Int = 0) {
+        let milliseconds = max(0, (timestamp ?? now) - sample.started) * 1_000
+        let value = String(format: "%.3f", locale: Locale(identifier: "en_US_POSIX"), milliseconds)
+        print("DSH_HISTORY_PERF sample=\(sample.id) phase=\(phase.rawValue) ms=\(value) count=\(max(0, count))")
+    }
+}
+
 @MainActor
 final class GatewayClient: ObservableObject {
     private static let presetLogger = Logger(subsystem: "ai.dsh.mobile.ios", category: "agent-presets")
     private let channel: String
+    private weak var performanceOwner: GatewayClient?
+    private var traceOwner: GatewayClient { performanceOwner ?? self }
     var credentialID: String?
     var expectedGatewayID: String?
     var trustedEndpoints: [String] = []
@@ -478,7 +635,15 @@ final class GatewayClient: ObservableObject {
                 let payload = try await Task.detached(priority: .userInitiated) {
                     try JSONEncoder().encode(request)
                 }.value
+                if let self {
+                    GatewayPerformanceTrace.messageWrite(owner: self.traceOwner, requestID: requestId,
+                        complete: false, bytes: payload.count)
+                }
                 try await socket.send(.string(String(decoding: payload, as: UTF8.self)))
+                if let self {
+                    GatewayPerformanceTrace.messageWrite(owner: self.traceOwner, requestID: requestId,
+                        complete: true, bytes: payload.count)
+                }
             } catch {
                 self?.handleFailure(error, socket: socket)
             }
@@ -556,7 +721,8 @@ final class GatewayClient: ObservableObject {
 
     /// KMP 文件状态机已经生成并校验过的协议请求。平台 transport 只负责发送。
     func sendRequestPayload(_ payload: String) {
-        if let type = try? JSONDecoder().decode(RequestEnvelope.self, from: Data(payload.utf8)).type,
+        let envelope = try? JSONDecoder().decode(RequestEnvelope.self, from: Data(payload.utf8))
+        if let type = envelope?.type,
            Self.usesConversationChannel(type), let conversationClient {
             conversationClient.sendRequestPayload(payload)
             return
@@ -566,7 +732,7 @@ final class GatewayClient: ObservableObject {
             return
         }
         if deferUntilConversationHello(payload) { return }
-        write(payload, to: socket)
+        write(payload, to: socket, historySessionID: envelope?.type == "subscribe" ? envelope?.sessionId : nil)
     }
 
     private func send(_ object: [String: Any]) {
@@ -584,21 +750,29 @@ final class GatewayClient: ObservableObject {
             let data = try JSONSerialization.data(withJSONObject: object)
             let text = String(decoding: data, as: UTF8.self)
             if deferUntilConversationHello(text) { return }
-            write(text, to: socket, logsPresets: object["type"] as? String == "agent-presets")
+            write(text, to: socket, logsPresets: object["type"] as? String == "agent-presets",
+                historySessionID: object["type"] as? String == "subscribe" ? object["sessionId"] as? String : nil)
         } catch {
             state = .failed(error.localizedDescription)
         }
     }
 
     /// 每条通道按提交顺序发送；hello 前的缓冲不会被后来的写操作插队。
-    private func write(_ payload: String, to socket: URLSessionWebSocketTask, logsPresets: Bool = false) {
+    private func write(_ payload: String, to socket: URLSessionWebSocketTask, logsPresets: Bool = false,
+                       historySessionID: String? = nil) {
         let previous = outboundTask
         outboundTask = Task { [weak self] in
             await previous?.value
             guard let self, !Task.isCancelled, self.socket === socket else { return }
             do {
                 if logsPresets { Self.presetLogger.info("send started") }
+                if let historySessionID {
+                    GatewayPerformanceTrace.subscribeWrite(owner: traceOwner, sessionID: historySessionID, complete: false)
+                }
                 try await socket.send(.string(payload))
+                if let historySessionID {
+                    GatewayPerformanceTrace.subscribeWrite(owner: traceOwner, sessionID: historySessionID, complete: true)
+                }
                 if logsPresets { Self.presetLogger.info("send completed") }
             } catch { self.handleFailure(error, socket: socket) }
         }
@@ -623,12 +797,14 @@ final class GatewayClient: ObservableObject {
 
     private struct RequestEnvelope: Decodable {
         let type: String
+        let sessionId: String?
     }
 
     private func receiveLoop(_ socket: URLSessionWebSocketTask) async {
         do {
             while !Task.isCancelled {
                 let message = try await socket.receive()
+                let receivedAt = GatewayPerformanceTrace.enabled ? GatewayPerformanceTrace.now : nil
                 let data: Data
                 switch message {
                 case .string(let text): data = Data(text.utf8)
@@ -642,6 +818,7 @@ final class GatewayClient: ObservableObject {
                         try GatewayWireDecoder.decode(data)
                     }.value
                     guard !Task.isCancelled, self.socket === socket else { return }
+                    GatewayPerformanceTrace.decoded(frame, owner: traceOwner, receivedAt: receivedAt, bytes: data.count)
                     if frame.kind.hasPrefix("approval") {
                         gatewayApprovalTrace(
                             "transport received kind=\(frame.kind) hasRpc=\(frame.rpcId?.isEmpty == false) " +
@@ -716,6 +893,7 @@ final class GatewayClient: ObservableObject {
     private func openConversationChannel() {
         guard conversationClient == nil, let endpoint else { return }
         let client = GatewayClient(channel: "conversation")
+        client.performanceOwner = self
         client.credentialID = credentialID
         client.expectedGatewayID = expectedGatewayID
         client.trustedEndpoints = trustedEndpoints
