@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="message_receipt_sending">发送中…</string>
+    <string name="message_receipt_accepted">已提交，等待对话同步…</string>
+    <string name="message_receipt_failed">发送失败，原文仍在输入框</string>
+    <string name="message_receipt_unconfirmed">发送状态未确认，请先检查会话</string>
+    <string name="message_receipt_attachments">包含图片附件</string>
+    <string name="message_receipt_dismiss">隐藏发送状态</string>
+</resources>

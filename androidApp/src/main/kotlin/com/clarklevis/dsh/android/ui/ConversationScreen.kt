@@ -128,6 +128,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
@@ -584,6 +585,7 @@ private fun ConversationPage(
                             stateHolder = stateHolder,
                             modifier = Modifier.padding(horizontal = 14.dp)
                         )
+                        MessageReceiptPreviews(stateHolder)
                         Composer(stateHolder, onPickImage, onDismissInput)
                     }
                 }
@@ -596,6 +598,33 @@ private fun ConversationPage(
             thumbnails = stateHolder.attachmentThumbnails,
             onDismiss = { imagePreview = null }
         )
+    }
+}
+
+@Composable
+private fun MessageReceiptPreviews(stateHolder: AndroidSharedStateHolder) {
+    val receipts = stateHolder.selectedMessageReceipts
+    if (receipts.isEmpty()) return
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).heightIn(max = 150.dp)
+        .verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        receipts.forEach { receipt ->
+            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                RoundedCornerShape(16.dp)).padding(12.dp).testTag("message-receipt-${receipt.phase}")) {
+                if (receipt.text.isNotEmpty()) Text(receipt.text)
+                if (receipt.attachmentCount > 0) Text(stringResource(R.string.message_receipt_attachments), fontSize = 12.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(when (receipt.phase) {
+                        "sending" -> R.string.message_receipt_sending
+                        "accepted" -> R.string.message_receipt_accepted
+                        "failed" -> R.string.message_receipt_failed
+                        else -> R.string.message_receipt_unconfirmed
+                    }), Modifier.weight(1f), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    TextButton(onClick = { stateHolder.dismissMessageReceipt(receipt.requestId) }) {
+                        Text(stringResource(R.string.message_receipt_dismiss))
+                    }
+                }
+            }
+        }
     }
 }
 

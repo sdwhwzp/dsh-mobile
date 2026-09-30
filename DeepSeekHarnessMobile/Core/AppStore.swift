@@ -428,7 +428,17 @@ final class AppStore: ObservableObject {
     @Published private(set) var queueRevision = 0
     @Published private(set) var messageSubmissionPending = false
     @Published private(set) var messageAcceptedRevision = 0
+    private let messageReceiptStore = DeepSeekHarnessShared.SharedMessageReceiptStore()
+    @Published private(set) var messageReceipts: [DeepSeekHarnessShared.SharedMessageReceipt] = []
+    private var supportsMessageReceipts = false
+    var selectedMessageReceipts: [DeepSeekHarnessShared.SharedMessageReceipt] {
+        messageReceipts.filter { $0.sessionId == selectedSessionId }
+    }
+    func dismissMessageReceipt(_ requestID: String) {
+        messageReceipts = messageReceiptStore.dismiss(requestId: requestID)
+    }
     private var messageSubmissionTimeout: Task<Void, Never>?
+    private var messageSubmissionRequestID: String?
     @Published private(set) var supportsQueueControl = false
     private var queueActionTimeout: Task<Void, Never>?
     private var queueProjectionSessionIDs: Set<String> = []
@@ -1527,6 +1537,7 @@ final class AppStore: ObservableObject {
             do { try await Task.sleep(for: .seconds(20)) } catch { return }
             guard let self, self.messageSubmissionPending else { return }
             self.messageSubmissionPending = false
+            self.messageReceipts = self.messageReceiptStore.submissionTimedOut()
             self.applySessionAgentPresetTransition(self.sessionAgentPresetStore.requestFailed(
                 type: "message", sessionId: self.selectedSessionId, requestId: nil, message: nil
             ))
@@ -1534,13 +1545,20 @@ final class AppStore: ObservableObject {
             self.lastError = "发送确认超时，请确认队列状态后重试"
         }
         waitingForNewSession = selectedSessionId == nil
+        let receiptID = supportsMessageReceipts ? UUID().uuidString : nil
+        messageSubmissionRequestID = receiptID
+        if let receiptID {
+            messageReceipts = messageReceiptStore.begin(requestId: receiptID, sessionId: selectedSessionId,
+                text: trimmed, attachmentCount: Int32(images.count))
+        }
         beginAgentBackgroundExecution(for: selectedSessionId, startsNewTurn: true)
         gateway.sendMessage(
             text: trimmed,
             images: images,
             sessionId: selectedSessionId,
             workspaceId: selectedSessionId == nil ? activeWorkspace?.id : nil,
-            mode: mode
+            mode: mode,
+            requestId: receiptID
         )
         return true
     }
@@ -1673,6 +1691,14 @@ final class AppStore: ObservableObject {
     }
 
     private func handle(_ frame: GatewayFrame) {
+        if !messageReceipts.isEmpty,
+           ["sent", "error", "history", "session-snapshot", "session-queue", "session-queues", "queue-item-updated"].contains(frame.kind) ||
+             (frame.kind == "event" && frame.event?.type == "user/message"),
+           let data = try? JSONEncoder().encode(frame) {
+            messageReceipts = messageReceiptStore.acceptFrame(json: String(decoding: data, as: UTF8.self))
+        }
+        if frame.kind == "sent", supportsMessageReceipts,
+           frame.requestId != messageSubmissionRequestID { return }
         if frame.kind == scheduledTaskMutationKind,
            frame.requestId == scheduledTaskMutationRequestID {
             let succeeded = frame.kind == "schedule-update" ? frame.updated == true : frame.deleted == true
@@ -1711,7 +1737,8 @@ final class AppStore: ObservableObject {
             messageSubmissionTimeout?.cancel()
             messageAcceptedRevision &+= 1
         }
-        if frame.kind == "error" && (frame.requestType == "message" || frame.requestType == nil) && messageSubmissionPending {
+        if frame.kind == "error" && (frame.requestType == "message" || frame.requestType == nil) && messageSubmissionPending &&
+            (frame.requestId == nil || frame.requestId == messageSubmissionRequestID) {
             messageSubmissionPending = false
             messageSubmissionTimeout?.cancel()
             waitingForNewSession = false
@@ -1919,6 +1946,7 @@ final class AppStore: ObservableObject {
             supportsGoals = payload.capabilities.contains("goals")
             supportsSessionCancel = payload.capabilities.contains("session-cancel")
             supportsQueueControl = payload.capabilities.contains("queue-control")
+            supportsMessageReceipts = payload.capabilities.contains("message-receipts")
             queueActionTimeout?.cancel()
             queueState = queueStore.resetConnection()
             queueRevision &+= 1
@@ -3031,6 +3059,7 @@ final class AppStore: ObservableObject {
     }
 
     private func handleConnectionFailure(_ detail: String) {
+        messageReceipts = messageReceiptStore.disconnected()
         messageSubmissionTimeout?.cancel()
         messageSubmissionPending = false
         queueActionTimeout?.cancel()

@@ -298,7 +298,8 @@ class GatewayRuntime(
         sessionId: String?,
         workspaceId: String?,
         clientTimeZone: String,
-        mode: String = "queue"
+        mode: String = "queue",
+        requestId: String? = null
     ): Boolean = serialized {
         if (text.isBlank() && images.isEmpty()) return@serialized false
         if (!outgoingImagesAreWithinLimits(images)) {
@@ -307,7 +308,7 @@ class GatewayRuntime(
         }
         markTurnLocked(sessionId)
         val sent = sendRequestLocked(
-            GatewayRequests.message(text.trim(), images, sessionId, workspaceId, clientTimeZone, mode)
+            GatewayRequests.message(text.trim(), images, sessionId, workspaceId, clientTimeZone, mode, requestId)
         )
         if (!sent) releaseTurnLocked(sessionId)
         sent
@@ -744,6 +745,7 @@ class GatewayRuntime(
 
     private fun responseCorrelationMatches(request: GatewayRequest, frame: GatewayFrame): Boolean =
         when (request.responseKind) {
+            "sent" -> request.correlationId == null || request.correlationId == frame.requestId
             "queue-item-updated" -> request.correlationId == frame.itemId
             "attachment" -> request.correlationId == frame.attachment?.attachmentId
             "question-response", "approval-response" -> request.correlationId == frame.rpcId
@@ -759,6 +761,7 @@ class GatewayRuntime(
 
     private fun explicitResponseCorrelation(request: GatewayRequest, frame: GatewayFrame): String? =
         when (request.responseKind) {
+            "sent" -> frame.requestId
             "queue-item-updated" -> frame.itemId
             "attachment" -> frame.attachment?.attachmentId
             "question-response", "approval-response" -> frame.rpcId

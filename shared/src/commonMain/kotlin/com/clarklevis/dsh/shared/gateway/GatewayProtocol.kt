@@ -443,14 +443,17 @@ object GatewayRequests {
         sessionId: String?,
         workspaceId: String?,
         clientTimeZone: String,
-        mode: String = "queue"
+        mode: String = "queue",
+        requestId: String? = null
     ): GatewayRequest = request(
         "message",
         "sent",
         sessionId,
+        correlationId = requestId,
         lanePolicy = GatewayRequestLanePolicy.REJECT_IF_BUSY
     ) {
         sessionId?.takeIf(String::isNotBlank)?.let { put("sessionId", it) }
+        requestId?.let { put("requestId", it) }
         put("text", text)
         put("images", buildJsonArray {
             images.forEach { image ->

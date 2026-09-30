@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="message_receipt_sending">Sending…</string>
+    <string name="message_receipt_accepted">Submitted; waiting for conversation sync…</string>
+    <string name="message_receipt_failed">Send failed; the draft is still in the composer</string>
+    <string name="message_receipt_unconfirmed">Send status unconfirmed; check the conversation first</string>
+    <string name="message_receipt_attachments">Includes image attachments</string>
+    <string name="message_receipt_dismiss">Hide send status</string>
+</resources>

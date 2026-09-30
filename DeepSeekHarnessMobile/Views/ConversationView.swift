@@ -465,6 +465,7 @@ struct ConversationView: View {
                             .padding(.bottom, 8)
                         }
                         VStack(spacing: 10) {
+                            messageReceiptPreviews
                             slashCommandMenus
                                 .padding(.horizontal, 14)
                             composer
@@ -1652,6 +1653,48 @@ struct ConversationView: View {
 
     private var conversationItems: [ConversationItem] {
         store.selectedConversationItems
+    }
+
+    @ViewBuilder
+    private var messageReceiptPreviews: some View {
+        if !store.selectedMessageReceipts.isEmpty {
+          ScrollView {
+            VStack(alignment: .trailing, spacing: 8) {
+                ForEach(store.selectedMessageReceipts, id: \.requestId) { receipt in
+                    VStack(alignment: .leading, spacing: 6) {
+                        if !receipt.text.isEmpty { Text(receipt.text).textSelection(.enabled) }
+                        if receipt.attachmentCount > 0 {
+                            Label(String(localized: "message.receipt.attachments", defaultValue: "包含图片附件"), systemImage: "photo")
+                                .font(.caption)
+                        }
+                        HStack {
+                            Text(messageReceiptLabel(receipt.phase))
+                                .font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button { store.dismissMessageReceipt(receipt.requestId) } label: {
+                                Image(systemName: "xmark")
+                            }
+                            .accessibilityLabel(String(localized: "message.receipt.dismiss", defaultValue: "隐藏发送状态"))
+                        }
+                    }
+                    .padding(12)
+                    .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16))
+                    .accessibilityIdentifier("message-receipt-\(receipt.phase)")
+                }
+            }
+        }
+          .frame(height: 132)
+          .padding(.horizontal, 14)
+        }
+    }
+
+    private func messageReceiptLabel(_ phase: String) -> String {
+        switch phase {
+        case "sending": String(localized: "message.receipt.sending", defaultValue: "发送中…")
+        case "accepted": String(localized: "message.receipt.accepted", defaultValue: "已提交，等待对话同步…")
+        case "failed": String(localized: "message.receipt.failed", defaultValue: "发送失败，原文仍在输入框")
+        default: String(localized: "message.receipt.unconfirmed", defaultValue: "发送状态未确认，请先检查会话")
+        }
     }
 
     private var supplementalViewportEntries: [ConversationViewportEntry] {

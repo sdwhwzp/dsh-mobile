@@ -260,6 +260,12 @@ class AndroidSharedStateHolder(
     }
 
     private var pendingMessageSubmission: MessageSubmission? by mutableStateOf(null)
+    private var pendingMessageRequestId: String? = null
+    private val messageReceiptStore = com.clarklevis.dsh.shared.facade.SharedMessageReceiptStore()
+    var messageReceipts by mutableStateOf(emptyList<com.clarklevis.dsh.shared.facade.SharedMessageReceipt>())
+        private set
+    val selectedMessageReceipts get() = messageReceipts.filter { it.sessionId == snapshot.selectedSessionId }
+    fun dismissMessageReceipt(requestId: String) { messageReceipts = messageReceiptStore.dismiss(requestId) }
     var queueDraftRestoreCount by mutableLongStateOf(0L)
         private set
 
@@ -291,6 +297,7 @@ class AndroidSharedStateHolder(
                             gatewayState = state
                             if (didReconnect) queueState = queueStore.resetConnection()
                             if (state.connection != GatewayConnectionState.CONNECTED) {
+                                messageReceipts = messageReceiptStore.disconnected()
                                 applySessionAgentPresetTransition(sessionAgentPresetStore.disconnected())
                                 pendingMessageSubmission = null
                                 cancellingSessionIds = emptySet()
@@ -341,6 +348,11 @@ class AndroidSharedStateHolder(
                                                 event.frame.copy(sessionId = event.correlatedSessionId)
                                             } else event.frame
                                         ))
+                                        if (messageReceipts.isNotEmpty() &&
+                                            (event.frame.kind in setOf("sent", "error", "history", "session-snapshot", "session-queue", "session-queues", "queue-item-updated") ||
+                                                event.frame.kind == "event" && event.frame.event?.type == "user/message")) {
+                                            messageReceipts = messageReceiptStore.acceptFrame(event.rawJson)
+                                        }
                                         handleSessionCancellationFrame(event.frame)
                                         if (event.frame.kind == scheduledTaskMutationKind &&
                                             event.frame.requestId == scheduledTaskMutationRequestId
@@ -370,7 +382,8 @@ class AndroidSharedStateHolder(
                                                 scheduledTasksError = event.frame.message ?: "定时任务加载失败"
                                             }
                                         }
-                                        if (event.frame.kind == "sent") {
+                                        if (event.frame.kind == "sent" &&
+                                            (pendingMessageRequestId == null || event.frame.requestId == pendingMessageRequestId)) {
                                             if (snapshot.selectedSessionId == null) {
                                                 event.frame.sessionId?.takeIf(String::isNotBlank)?.let { sessionId ->
                                                     gatewayFollowUps?.submit { appGraph.gatewayRuntime.subscribe(sessionId) }
@@ -485,7 +498,10 @@ class AndroidSharedStateHolder(
                                             event.requestType, event.targetSessionId, event.correlationId, "请求未完成，请重试"
                                         ))
                                         handleSessionCancellationFailure(event.requestType, event.targetSessionId)
-                                        if (event.requestType == "message") pendingMessageSubmission = null
+                                        if (event.requestType == "message") {
+                                            pendingMessageSubmission = null
+                                            messageReceipts = messageReceiptStore.submissionTimedOut()
+                                        }
                                         if (event.requestType == "queue-update") {
                                             queueState = queueStore.failPending("队列操作未完成，请检查最新状态后重试")
                                             platformError = queueState.lastError
@@ -554,7 +570,10 @@ class AndroidSharedStateHolder(
                                             event.requestType, event.targetSessionId, event.correlationId, "请求未完成，请重试"
                                         ))
                                         handleSessionCancellationFailure(event.requestType, event.targetSessionId)
-                                        if (event.requestType == "message") pendingMessageSubmission = null
+                                        if (event.requestType == "message") {
+                                            pendingMessageSubmission = null
+                                            messageReceipts = messageReceiptStore.submissionTimedOut()
+                                        }
                                         if (event.requestType == "queue-update") {
                                             queueState = queueStore.failPending("队列操作未完成，请检查最新状态后重试")
                                             platformError = queueState.lastError
@@ -618,7 +637,10 @@ class AndroidSharedStateHolder(
                                             event.requestType, event.targetSessionId, event.correlationId, "请求未完成，请重试"
                                         ))
                                         handleSessionCancellationFailure(event.requestType, event.targetSessionId)
-                                        if (event.requestType == "message") pendingMessageSubmission = null
+                                        if (event.requestType == "message") {
+                                            pendingMessageSubmission = null
+                                            messageReceipts = messageReceiptStore.submissionTimedOut()
+                                        }
                                         if (event.requestType == "queue-update") {
                                             queueState = queueStore.failPending("队列操作未完成，请检查最新状态后重试")
                                             platformError = queueState.lastError
@@ -1584,6 +1606,12 @@ class AndroidSharedStateHolder(
             applySessionAgentPresetTransition(sessionAgentPresetStore.beginMessage())
         }
         pendingMessageSubmission = submission
+        val receiptId = if (commandExecution == null && "message-receipts" in gatewayState.capabilities) {
+            java.util.UUID.randomUUID().toString().also {
+                messageReceipts = messageReceiptStore.begin(it, submission.sessionId, submission.draft, submission.images.size)
+            }
+        } else null
+        pendingMessageRequestId = receiptId
         appGraph.diagnostics.intent(
             GatewayDiagnosticAction.SEND_MESSAGE,
             hasSession = submission.sessionId != null,
@@ -1620,9 +1648,11 @@ class AndroidSharedStateHolder(
                     sessionId = submission.sessionId,
                     workspaceId = activeWorkspace?.workspaceId,
                     clientTimeZone = TimeZone.getDefault().id,
-                    mode = mode
+                    mode = mode,
+                    requestId = receiptId
                 )
                 if (!sent) withContext(Dispatchers.Main.immediate) {
+                    if (receiptId != null) messageReceipts = messageReceiptStore.dismiss(receiptId)
                     pendingMessageSubmission = null
                     applySessionAgentPresetTransition(sessionAgentPresetStore.requestFailed(
                         "message", submission.sessionId, null, null

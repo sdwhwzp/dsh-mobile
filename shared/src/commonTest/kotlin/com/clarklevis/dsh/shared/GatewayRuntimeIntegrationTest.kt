@@ -849,6 +849,25 @@ class GatewayRuntimeIntegrationTest {
     }
 
     @Test
+    fun lateMessageReceiptCannotReleaseAnotherPendingSubmission() = runTest {
+        val transport = FakeTransport()
+        val runtime = newRuntime(transport)
+        runCurrent()
+        runtime.connect("wss://gateway.example/ws/mobile")
+        transport.opened()
+        transport.receive("""{"kind":"hello","authenticated":true}""")
+        runCurrent()
+        assertTrue(runtime.sendMessage("one", emptyList(), "s", null, "UTC", requestId = "one"))
+        transport.receive("""{"kind":"sent","sessionId":"s","requestId":"old"}""")
+        runCurrent()
+        assertFalse(runtime.sendMessage("two", emptyList(), "s", null, "UTC", requestId = "two"))
+        transport.receive("""{"kind":"sent","sessionId":"s","requestId":"one"}""")
+        runCurrent()
+        assertTrue(runtime.sendMessage("two", emptyList(), "s", null, "UTC", requestId = "two"))
+        runtime.disconnect()
+    }
+
+    @Test
     fun nonIdempotentRequestsRejectWhileBusyAndKeepTurnAccountingExact() = runTest {
         val transport = FakeTransport()
         val runtime = newRuntime(transport)

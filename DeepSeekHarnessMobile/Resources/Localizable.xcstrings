@@ -1,6 +1,102 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+  "message.receipt.sending": {
+    "localizations": {
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "发送中…"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Sending…"
+        }
+      }
+    }
+  },
+  "message.receipt.accepted": {
+    "localizations": {
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "已提交，等待对话同步…"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Submitted; waiting for conversation sync…"
+        }
+      }
+    }
+  },
+  "message.receipt.failed": {
+    "localizations": {
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "发送失败，原文仍在输入框"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Send failed; the draft is still in the composer"
+        }
+      }
+    }
+  },
+  "message.receipt.unconfirmed": {
+    "localizations": {
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "发送状态未确认，请先检查会话"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Send status unconfirmed; check the conversation first"
+        }
+      }
+    }
+  },
+  "message.receipt.attachments": {
+    "localizations": {
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "包含图片附件"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Includes image attachments"
+        }
+      }
+    }
+  },
+  "message.receipt.dismiss": {
+    "localizations": {
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "隐藏发送状态"
+        }
+      },
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Hide send status"
+        }
+      }
+    }
+  },
     " 等工具" : {
       "extractionState" : "stale",
       "localizations" : {

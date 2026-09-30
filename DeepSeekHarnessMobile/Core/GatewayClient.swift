@@ -447,10 +447,11 @@ final class GatewayClient: ObservableObject {
         images: [GatewayOutgoingImage] = [],
         sessionId: String?,
         workspaceId: String? = nil,
-        mode: String = "queue"
+        mode: String = "queue",
+        requestId: String? = nil
     ) {
         if let conversationClient {
-            conversationClient.sendMessage(text: text, images: images, sessionId: sessionId, workspaceId: workspaceId, mode: mode)
+            conversationClient.sendMessage(text: text, images: images, sessionId: sessionId, workspaceId: workspaceId, mode: mode, requestId: requestId)
             return
         }
         guard let socket else {
@@ -469,7 +470,8 @@ final class GatewayClient: ObservableObject {
             },
             workspaceId: sessionId == nil && workspaceId?.isEmpty == false ? workspaceId : nil,
             clientTimeZone: TimeZone.current.identifier,
-            mode: mode
+            mode: mode,
+            requestId: requestId
         )
         Task { [weak self] in
             do {
@@ -905,6 +907,7 @@ private struct GatewayMessageRequest: Encodable, Sendable {
     var workspaceId: String?
     var clientTimeZone: String
     var mode: String
+    var requestId: String?
 }
 
 private struct GatewayCommandExecuteRequest: Encodable, Sendable {
