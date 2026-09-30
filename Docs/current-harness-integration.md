@@ -28,6 +28,8 @@ npm test
 
 多账号连接请求仅含标题投影的会话列表。普通消息发送确认后，两端沿用已选会话的实时订阅与本地列表状态，不重新读取整个列表或模型目录；iOS 对新会话和命令仍刷新相应状态，Android 在创建新会话时完成初始订阅与控制信息读取。手动刷新、重连和会话管理仍从服务端同步列表。
 
+账号网关的首次订阅窗口默认为最近 4 条消息，避免冷打开时先在主线程排版 12 条 Markdown 消息；向上滑动仍按客户端的分页大小读取更早记录。网关可通过 `MCP_MOBILE_INITIAL_HISTORY_MESSAGES` 配置初始窗口。iOS 的 `testLatestFourMarkdownHistoryMessagesReachVisibleTail` 使用独立生成的带段落、列表和代码块的 4 条消息，验证视口提交全部行并定位最新消息，计时不包含网络和解码。
+
 iOS 后台保活直接读取定位管理器的授权状态，并通过授权回调处理变化，发送确认时不在主线程同步查询全局定位开关。系统关闭定位服务也会返回 `denied`，见 [Apple 授权状态说明](https://developer.apple.com/documentation/corelocation/clauthorizationstatus/denied)。
 
 `dsh-passwords` 使用 `3081` 时，Mobile Gateway 的独立 LAN 监听必须另选端口，例如 `3083`。不要停用现有登录网关或关闭设备鉴权来解决端口冲突。手机使用配对码携带的实际地址；Android Emulator 可通过 `adb reverse tcp:3083 tcp:3083` 访问该端口。

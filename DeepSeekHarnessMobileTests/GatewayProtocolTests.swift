@@ -6941,6 +6941,68 @@ private final class AgentLongRunningKeepAliveSpy: AgentLongRunningKeepAlive {
 /// These tests fail by killing the test process before the fix, and must return
 /// a finite measurement after it.
 final class MarkdownLargeMessageTests: XCTestCase {
+    @MainActor
+    func testLatestFourMarkdownHistoryMessagesReachVisibleTail() async throws {
+        let available = expectation(description: "Current history is visible")
+        let aligned = expectation(description: "Latest message is aligned")
+        let timeline = ConversationTimeline()
+        let controller = ConversationViewportController(
+            onContentAvailabilityChanged: { _, hasContent in
+                if hasContent { available.fulfill() }
+            },
+            onPinnedToBottomChanged: { _ in },
+            onBottomAlignmentCompleted: { aligned.fulfill() },
+            onApproachingTop: {}
+        )
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        controller.view.layoutIfNeeded()
+        controller.configure(sessionID: "markdown-history", timeline: timeline,
+            supplementalEntries: [], makeEntries: { items in
+                items.map { item in
+                    ConversationViewportEntry(id: item.id, revision: 0,
+                        content: AnyView(ConversationRow(item: item,
+                            showsCopyButton: true, imageData: { _ in nil })),
+                        clipsContentToBounds: true)
+                }
+            }, bottomInset: 140)
+        let messages = (9...12).map { index in
+            let text = (1...20).map { section in
+                """
+                ### Message \(index), step \(section)
+
+                Review the **configuration** and keep `sessionId` consistent. A historical message retains every paragraph, list and code block when the latest page becomes visible.
+
+                - Preserve the message order.
+                - Keep the cursor for older pages.
+
+                ```swift
+                let page = Page(index: \(section))
+                await session.receive(page)
+                ```
+                """
+            }.joined(separator: "\n\n")
+            return ConversationItem(id: "markdown-\(index)", kind: .assistant,
+                title: "Agent", text: text, isError: false,
+                date: Date(timeIntervalSince1970: Double(index)))
+        }
+        let started = CFAbsoluteTimeGetCurrent()
+        timeline.publish(messages)
+        let publishSeconds = CFAbsoluteTimeGetCurrent() - started
+        await fulfillment(of: [available], timeout: 15)
+        controller.scrollToBottom()
+        await fulfillment(of: [aligned], timeout: 15)
+        let elapsed = CFAbsoluteTimeGetCurrent() - started
+        print("VIEWPORT_BENCH messages=4 bytes=\(messages.reduce(0) { $0 + $1.text.utf8.count }) publishSeconds=\(publishSeconds) visibleSeconds=\(elapsed)")
+        let collection = try XCTUnwrap(controller.view.subviews.compactMap { $0 as? UICollectionView }.first)
+        XCTAssertEqual(collection.numberOfItems(inSection: 0), 4)
+        let last = IndexPath(item: 3, section: 0)
+        XCTAssertTrue(collection.indexPathsForVisibleItems.contains(last))
+        XCTAssertEqual(timeline.currentSnapshot.items.last?.text, messages.last?.text)
+    }
+
     private func longMessage(lineCount: Int) -> String {
         (1...lineCount).map(String.init).joined(separator: "\n")
     }
