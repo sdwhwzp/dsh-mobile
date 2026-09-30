@@ -371,6 +371,11 @@ class AndroidSharedStateHolder(
                                             }
                                         }
                                         if (event.frame.kind == "sent") {
+                                            if (snapshot.selectedSessionId == null) {
+                                                event.frame.sessionId?.takeIf(String::isNotBlank)?.let { sessionId ->
+                                                    gatewayFollowUps?.submit { appGraph.gatewayRuntime.subscribe(sessionId) }
+                                                }
+                                            }
                                             pendingMessageSubmission?.let { applyMessageSendResult(it, true) }
                                             pendingMessageSubmission = null
                                         }
@@ -451,11 +456,6 @@ class AndroidSharedStateHolder(
                                         }
                                         if (event.frame.kind in setOf("session-archives", "session-archived")) {
                                             gatewayFollowUps?.submit { appGraph.gatewayRuntime.requestSessions() }
-                                        }
-                                        if (event.frame.kind == "sent") {
-                                            event.frame.sessionId?.takeIf(String::isNotBlank)?.let { sessionId ->
-                                                handleSentSession(appGraph, sessionId)
-                                            }
                                         }
                                     }
                                     if (trajectoryIsActive &&
@@ -1326,14 +1326,6 @@ class AndroidSharedStateHolder(
         if (gatewayState.connection != GatewayConnectionState.CONNECTED) return
         appGraph.gatewayScope.launch {
             appGraph.gatewayRuntime.sendRequest(GatewayRequests.sessionControl("context-usage", sessionId))
-        }
-    }
-
-    private suspend fun handleSentSession(appGraph: AndroidAppGraph, sessionId: String) {
-        gatewayFollowUps?.submit {
-            appGraph.gatewayRuntime.subscribe(sessionId)
-            appGraph.gatewayRuntime.requestSessions()
-            requestSessionControls(appGraph, sessionId)
         }
     }
 

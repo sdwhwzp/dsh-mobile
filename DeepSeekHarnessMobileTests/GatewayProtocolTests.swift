@@ -4617,6 +4617,37 @@ final class GatewayProtocolTests: XCTestCase {
     }
 
     @MainActor
+    func testExistingMessageAcknowledgmentPreservesForegroundSessionWithoutNetworkRefresh() async throws {
+        let session = SessionSummary(
+            id: "existing", title: "Existing", lastActivity: Date(timeIntervalSince1970: 1),
+            isRunning: false, hasUnread: false
+        )
+        let foreground = SessionSummary(
+            id: "foreground", title: "Foreground", lastActivity: Date(timeIntervalSince1970: 2),
+            isRunning: false, hasUnread: false
+        )
+        let store = AppStore(preferences: AppPreferencesSpy(
+            endpoint: "", selectedWorkspaceID: nil, sessions: [session, foreground]
+        ), backgroundExecutionController: AgentBackgroundExecutionController(
+            application: BackgroundTaskApplicationSpy()
+        ))
+        defer { store.deactivateGateway() }
+        let prepared = await store.prepareConversation(for: foreground)
+        XCTAssertTrue(prepared)
+        XCTAssertEqual(store.gateway.state, .disconnected)
+
+        store.gateway.onFrame?(try GatewayWireDecoder.decode(Data(
+            #"{"kind":"sent","sessionId":"existing"}"#.utf8
+        )))
+        await store.awaitPendingKMPEventDeliveriesForTesting()
+
+        XCTAssertEqual(Set(store.sessions.map(\.id)), ["existing", "foreground"])
+        XCTAssertEqual(store.selectedSessionId, "foreground")
+        XCTAssertEqual(try XCTUnwrap(store.sessions.first { $0.id == "existing" }).hasConversation, true)
+        XCTAssertEqual(store.gateway.state, .disconnected)
+    }
+
+    @MainActor
     func testKMPSessionControlAdapterOwnsStateAndEmitsRequestEffectOnce() {
         let adapter = KMPSessionControlStoreAdapter()
 
@@ -4679,7 +4710,7 @@ final class GatewayProtocolTests: XCTestCase {
         XCTAssertEqual(transition.snapshot.sessionPermissions["session-1"]?.currentValue, "read-only")
         XCTAssertEqual(
             transition.snapshot.sessionPermissions["session-1"]?.options?.map(\.value),
-            ["read-only"]
+            ["read-only", "future"]
         )
     }
 

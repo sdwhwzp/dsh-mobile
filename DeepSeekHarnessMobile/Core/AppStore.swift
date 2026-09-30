@@ -2614,6 +2614,7 @@ final class AppStore: ObservableObject {
     }
 
     private func handleSent(sessionID: String, command: JSONValue?) {
+        let isNewSession = !sessions.contains { $0.id == sessionID }
         backgroundExecutionController.messageAccepted(sessionID: sessionID)
         waitingForNewSession = false
         dispatchSessionListIntent(.messageSent(sessionID: sessionID, agentPreset: agentPresetDefault))
@@ -2626,8 +2627,8 @@ final class AppStore: ObservableObject {
         if selectedSessionId == sessionID && !assistantStreamState.hasBaseline(sessionId: sessionID) {
             subscribeToSession(sessionID)
         }
-        gateway.requestSessions()
-        refreshSessionControls(for: sessionID)
+        if isNewSession { gateway.requestSessions() }
+        if isNewSession || command != nil { refreshSessionControls(for: sessionID) }
     }
     private func applyHistoryRebased(_ payload: GatewayHistoryPayload) {
         guard let id = payload.sessionID else { return }

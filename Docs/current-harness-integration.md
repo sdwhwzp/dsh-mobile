@@ -26,6 +26,10 @@ npm test
 
 账号连接使用登录响应里的 `/api/mobile.v1/<gatewayId>`，不需要新增端口或在 Harness 中启用全局 Mobile Gateway 插件。桥接的每次调用和订阅均经过现有账号网关；`session/control` 的基线与增量也按会话权限过滤。账号模式不开放宿主机原始目录浏览、文件下载、全局默认模型修改或定时任务管理；有权限时使用现有账号网页完成这些操作。完整服务端说明见 [dsh-passwords 原生移动端接入](https://github.com/sdwhwzp/dsh-passwords/blob/dev/docs/native-mobile.md)。
 
+多账号连接请求仅含标题投影的会话列表。普通消息发送确认后，两端沿用已选会话的实时订阅与本地列表状态，不重新读取整个列表或模型目录；iOS 对新会话和命令仍刷新相应状态，Android 在创建新会话时完成初始订阅与控制信息读取。手动刷新、重连和会话管理仍从服务端同步列表。
+
+iOS 后台保活直接读取定位管理器的授权状态，并通过授权回调处理变化，发送确认时不在主线程同步查询全局定位开关。系统关闭定位服务也会返回 `denied`，见 [Apple 授权状态说明](https://developer.apple.com/documentation/corelocation/clauthorizationstatus/denied)。
+
 `dsh-passwords` 使用 `3081` 时，Mobile Gateway 的独立 LAN 监听必须另选端口，例如 `3083`。不要停用现有登录网关或关闭设备鉴权来解决端口冲突。手机使用配对码携带的实际地址；Android Emulator 可通过 `adb reverse tcp:3083 tcp:3083` 访问该端口。
 
 ## 本机验证
@@ -44,7 +48,7 @@ node scripts/check-harness-mobile.mjs http://127.0.0.1:13880 /tmp/mobile-workspa
 
 本机验证已包括 Android APK 构建及单元测试、Kotlin 共享层测试、iOS Simulator 构建和 16 项账号/主机隔离/本地化测试、服务端 27 项认证与 Remote mux 测试，以及当前 Harness 上通过账号网关完成的原生协议联调（包括命令目录和 assistant-stream 订阅）。这些结果不代表真机签名安装或真实模型生成已经验收。
 
-本机 Gradle 缓存和 iOS DerivedData 已移到挂载的外置盘 `/Volumes/External/dsh-mobile-build-cache-20260928`，原来的 `.gradle-user` 与 `build/ios` 路径为本机符号链接。源码仍在 `/Users/wangzhipeng/dsh-mobile`；其他机器使用自己的缓存目录。
+本机 Gradle 缓存和 iOS DerivedData 已移到挂载的外置盘 `/Volumes/External/dsh-mobile-build-cache-20260928`，原来的 `.gradle-user` 与 `build/ios` 路径为本机符号链接。源码位于 `/Users/wangzhipeng/macproject/dsh-mobile`；其他机器使用自己的缓存目录。
 
 ## iOS 发布
 

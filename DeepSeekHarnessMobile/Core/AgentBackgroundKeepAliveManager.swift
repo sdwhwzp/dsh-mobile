@@ -133,8 +133,7 @@ final class AgentBackgroundKeepAliveManager: NSObject, AgentLongRunningKeepAlive
     }
 
     private func prepareLocationAuthorizationAndSession() {
-        guard CLLocationManager.locationServicesEnabled() else { return }
-
+        // 全局定位关闭也返回 denied；避免在主线程同步查询定位服务。
         switch locationManager.authorizationStatus {
         case .notDetermined:
             guard !didRequestAlwaysAuthorization else { return }

@@ -1,6 +1,6 @@
 # TestFlight 发布
 
-本 fork 的 iOS App 使用 `com.wangzhipeng.dshmobile`，实时活动扩展使用 `com.wangzhipeng.dshmobile.AgentLiveActivityWidget`，签名团队为 Hongkun Wang（`K8N68KDS73`）。两个 target 的版本均为 `1.6.1`、构建号 `15`；再次上传同一版本时同步增加两个 target 的 `CURRENT_PROJECT_VERSION`。主 App 的 Info.plist 从构建设置读取版本。
+本 fork 的 iOS App 使用 `com.wangzhipeng.dshmobile`，实时活动扩展使用 `com.wangzhipeng.dshmobile.AgentLiveActivityWidget`，签名团队为 Hongkun Wang（`K8N68KDS73`）。两个 target 的版本均为 `1.6.1`、构建号 `16`；再次上传同一版本时同步增加两个 target 的 `CURRENT_PROJECT_VERSION`。主 App 的 Info.plist 从构建设置读取版本。
 
 在 Xcode 的 Apple Accounts 中登录具有该团队签名权限的账号。构建需要 Java 17、Android SDK、Kotlin/Native 和 Xcode 的 iOS/Metal 工具链。Gradle 使用 `GRADLE_USER_HOME` 指定缓存；外置盘路径只属于本机配置，不写入项目。
 
